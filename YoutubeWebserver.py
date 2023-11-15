@@ -62,7 +62,7 @@ def reNewToken():
         pt.saveCredentails(credentials)
     return 'renewed!'
 
-user, password, serverIp, mariaPort, database, portNumber, projectID, playlistID, hostIP, hostPort = pt.getProjectVariables("config.yaml")
+database, mariaPort, password, serverIp, user, projectID, portNumber, playlistID, hostIP, hostPort = pt.getProjectVariables("config.yaml")
 
 numberedSerializedKeywords = ['series', 'part', 'finale', 'episode', 'ep', 'smarter every day']
 serializedKeywords = ['finale']
