@@ -182,9 +182,12 @@ def updatePlaylist(watchLater, sortedWatchLater, youtube, playlistID):
                     }
                 }
             )
-            update_response = update_request.execute()
+            try:
+                update_response = update_request.execute()
+            except ValueError:
+                print(f"Couldn't update {x[6]}. Please look into further")
             numOperations += 1
-            watchLater.insert(0, watchLater.pop(watchLater.index(sortedWatchLater[x])))
+            watchLater.insert(x, watchLater.pop(watchLater.index(sortedWatchLater[x])))
             print(update_response["snippet"]["title"])
     print("Number of operations preformed: " + str(numOperations))
     return numOperations, watchLater
@@ -253,7 +256,88 @@ def printMultiList(*args):
             print(element, end=' ')
         print('\n')
     
+def getPriorityVideos(watchLaterList, creatorDict, keywordDict, priorityThreshold, durationThreshold):
+    nonPriority = watchLaterList.copy()
+    creatorDict = filterDict(creatorDict, ">", priorityThreshold)
+    keywordDict = filterDict(keywordDict, ">", priorityThreshold)
+    setValues = set(list(creatorDict.values()))
+    setValues.update(list(keywordDict.values()))
+    scoreSet = sorted(list(setValues), reverse=True)
+    priorityWatchLater = [[] for i in range(len(scoreSet))]
+    for item in watchLaterList:
+        keywordFound = False
+        for word in keywordDict.keys():
+            if word in item[6]:
+                if keywordDict[word] in scoreSet:
+                    scoreIndex = scoreSet.index(keywordDict[word])
+                    priorityWatchLater[scoreIndex].append(item)
+                    nonPriority.remove(item)
+                    keywordFound = True
+                    break
+        if keywordFound:
+            continue
+        if item[4] in creatorDict.keys():
+            if item[3]<(durationThreshold):
+                if creatorDict[item[4]] in scoreSet:
+                    scoreIndex = scoreSet.index(creatorDict[item[4]])
+                    priorityWatchLater[scoreIndex].append(item)
+                    nonPriority.remove(item)
+    return priorityWatchLater, nonPriority
 
+def getSerializedVideos(watchLaterList, numSerKeywords, serKeywords):
+    nonSerialized = watchLaterList.copy()
+    patternString = r"(%s)\s\d+" % "|".join(numSerKeywords) + "|(%s)" % "|".join(serKeywords)
+    seriesPattern = re.compile(patternString, re.IGNORECASE)
+    seriesList = []
+    for item in watchLaterList:
+        result = seriesPattern.search(item[6])
+        if result:
+            if 'Smarter Every Day' in item[6]:
+                # list_item = list(item)
+                # list_item[6] = item[6][result.start():]
+                # seriesList.append(list_item)
+                seriesList.append(item)
+                nonSerialized.remove(item)
+            else:
+                # seriesList.append(list(item))
+                seriesList.append(item)
+                nonSerialized.remove(item)
+    return seriesList, nonSerialized
+
+def getSequentialVideos(watchLaterList, sequentialCreators):
+    return [i for i in watchLaterList if i[4] in sequentialCreators]
+
+def getFollowUpVideos(watchLaterList, FollowUpList):
+    videos = [item for item in watchLaterList if item[2] in FollowUpList[1]]
+    ids = [v for i, v in enumerate(FollowUpList[0]) if FollowUpList[2][i] is None]
+    nullCount = FollowUpList[2].count(None)
+    FollowUpWatchLater = [[] for i in range(nullCount)]
+    for index, id in enumerate(FollowUpList[2]):
+        if id is None: 
+            idIndex = ids.index(FollowUpList[0][index])
+        else:
+            idIndex = ids.index(id)
+        FollowUpWatchLater[idIndex].append(videos[index])
+    return FollowUpWatchLater
+
+def sortSeriesVideos(watchLaterList):
+    # natsortedList = natsorted(watchLaterList, key=lambda x: x[6])
+    # creators = [i[4] for i in natsortedList]
+    # creatorsSet = list(set(creators))
+    # seriresWatchLater = [[] for i in range(len(creatorsSet))]
+    # for video in natsortedList:
+    #     scoreIndex = creatorsSet.index(video[4])
+    #     seriresWatchLater[scoreIndex].append(video)
+    # return seriresWatchLater
+    creators = [i[4] for i in watchLaterList]
+    creatorsSet = list(set(creators))
+    seriresWatchLater = [[] for i in range(len(creatorsSet))]
+    for video in watchLaterList:
+        scoreIndex = creatorsSet.index(video[4])
+        seriresWatchLater[scoreIndex].append(video)
+    for row in seriresWatchLater:
+        row = natsorted(row, key=lambda x: x[6])
+    return seriresWatchLater
 
 def sortWatcherLater(watchLaterList, creatorDict, keywordDict, numSerKeywords, serKeywords, videoFollowUpList):
     #WatchLaterList structured as (position on yt, playlist id for yt, video id for yt, duration in seconds, creator, published time in unix time, video title)
@@ -265,73 +349,114 @@ def sortWatcherLater(watchLaterList, creatorDict, keywordDict, numSerKeywords, s
         priorityThreshold = 0
     else:
         priorityThreshold = 1
-    creatorDict = filterDict(creatorDict, ">", priorityThreshold)
-    keywordDict = filterDict(keywordDict, ">", priorityThreshold)
-    setValues = set(list(creatorDict.values()))
-    setValues.update(list(keywordDict.values()))
-    scoreSet = sorted(list(setValues), reverse=True)
-    patternString = r"(%s)\s\d+" % "|".join(numSerKeywords) + "|(%s)" % "|".join(serKeywords)
-    seriesPattern = re.compile(patternString, re.IGNORECASE)
-    priorityWatchLater = [[] for i in range(len(scoreSet))]
-    seriesList = []
+    sequentialCreators = ['Wintergatan']
+
+    #Step 1 - Get sublists
+    priorityWatchLater, workingWatchLater = getPriorityVideos(watchLaterList, creatorDict, keywordDict, priorityThreshold, durationThreshold)
+    followUpWatchLater = getFollowUpVideos(workingWatchLater, videoFollowUpList)
+    seriesWatchLater, workingWatchLater = getSerializedVideos(workingWatchLater, numSerKeywords, serKeywords)
+    sequentialWatchLater = getSequentialVideos(workingWatchLater, sequentialCreators)
+    workingWatchLater = [i for i in workingWatchLater if i not in sequentialWatchLater]
+
+    #creatorDict = filterDict(creatorDict, ">", priorityThreshold)
+    #keywordDict = filterDict(keywordDict, ">", priorityThreshold)
+    #setValues = set(list(creatorDict.values()))
+    #setValues.update(list(keywordDict.values()))
+    #scoreSet = sorted(list(setValues), reverse=True)
+    #patternString = r"(%s)\s\d+" % "|".join(numSerKeywords) + "|(%s)" % "|".join(serKeywords)
+    #seriesPattern = re.compile(patternString, re.IGNORECASE)
+    #priorityWatchLater = [[] for i in range(len(scoreSet))]
+    #seriesList = []
     #Step 1 Find all and pull out priority videos into new list
-    for item in watchLaterList:
-        result = seriesPattern.search(item[6])
-        if result:
-            if 'Smarter Every Day' in item[6]:
-                list_item = list(item)
-                list_item[6] = item[6][result.start():]
-                seriesList.append(list_item)
-            else:
-                seriesList.append(list(item))
-        keywordFound = False
-        for word in keywordDict.keys():
-            if word in item[6]:
-                if keywordDict[word] in scoreSet:
-                    scoreIndex = scoreSet.index(keywordDict[word])
-                    priorityWatchLater[scoreIndex].append(item)
-                    workingWatchLater.remove(item)
-                    keywordFound = True
-                    break
-        if keywordFound:
-            continue
-        if item[4] in creatorDict.keys():
-            if item[3]<(durationThreshold):
-                if creatorDict[item[4]] in scoreSet:
-                    scoreIndex = scoreSet.index(creatorDict[item[4]])
-                    priorityWatchLater[scoreIndex].append(item)
-                    workingWatchLater.remove(item)
-    sortedwatchLaterList = sorted(workingWatchLater, key=lambda x: (x[3], x[5]))
-    sortedSeriesList = natsorted(seriesList, key=lambda x: x[6])
-    i=0
-    while i in range(len(sortedSeriesList)):
-        samelist = [1 for x in sortedSeriesList if x[4] == sortedSeriesList[i][4]]
-        for j in range(len(samelist)-1):
-            sortedSeriesList[i+j][6] = watchLaterList[sortedSeriesList[i+j][0]][6]
-            sortedSeriesList[i+j+1][6] = watchLaterList[sortedSeriesList[i+j+1][0]][6]
-            videoToMoveIndex = sortedwatchLaterList.index(tuple(sortedSeriesList[i+j+1]))
-            sortedwatchLaterList.remove(sortedwatchLaterList[videoToMoveIndex])
-            videoIndex = sortedwatchLaterList.index(tuple(sortedSeriesList[i+j]))
-            if len(samelist) > 2:
-                sortedwatchLaterList.insert(videoIndex+2,tuple(sortedSeriesList[i+j+1]))
-            else:
-                sortedwatchLaterList.insert(videoIndex+1,tuple(sortedSeriesList[i+j+1]))
-        i += len(samelist)
-    videoIDList = [item[2] for item in sortedwatchLaterList]
-    for i in range(len(videoFollowUpList)-1):
-        if videoFollowUpList[2][i] in videoFollowUpList[0]:
-            predecentVideoPosition = videoIDList.index(videoFollowUpList[1][videoFollowUpList[0].index(videoFollowUpList[2][i])])
-            videoFollowUpPosition = videoIDList.index(videoFollowUpList[1][i])
-            videoRecord = sortedwatchLaterList.pop(videoFollowUpPosition)
-            if videoFollowUpPosition < predecentVideoPosition:
+    #for item in watchLaterList:
+    #    result = seriesPattern.search(item[6])
+    #    if result:
+    #        if 'Smarter Every Day' in item[6]:
+    #            list_item = list(item)
+    #            list_item[6] = item[6][result.start():]
+    #            seriesList.append(list_item)
+    #        else:
+    #            seriesList.append(list(item))
+    #    keywordFound = False
+    #    for word in keywordDict.keys():
+    #        if word in item[6]:
+    #            if keywordDict[word] in scoreSet:
+    #                scoreIndex = scoreSet.index(keywordDict[word])
+    #                priorityWatchLater[scoreIndex].append(item)
+    #                workingWatchLater.remove(item)
+    #                keywordFound = True
+    #                break
+    #    if keywordFound:
+    #        continue
+    #    if item[4] in creatorDict.keys():
+    #        if item[3]<(durationThreshold):
+    #            if creatorDict[item[4]] in scoreSet:
+    #                scoreIndex = scoreSet.index(creatorDict[item[4]])
+    #                priorityWatchLater[scoreIndex].append(item)
+    #                workingWatchLater.remove(item)
+    
+    #Step 2 - Sort segments
+    sortedpriorityWatchLater = []
+    for i in range(len(priorityWatchLater)): #Sort by priortity then publish time
+        sortedpriorityWatchLater += sorted(priorityWatchLater[i], key=lambda x: x[5]) #Creates 1D list where priority is maintaied and videos are sorted by publish time within a priority group
+    sortedSeriesWatchLater = sortSeriesVideos(seriesWatchLater)
+    #seriesWatchLater = natsorted(seriesWatchLater, key=lambda x: x[6]) #Sort by Video title
+    sequentialWatchLater.sort(key=lambda x: x[5]) #Sort by publish time
+    workingWatchLater.sort( key=lambda x: (x[3], x[5])) #Sort by duration then publish time
+
+    #Step 3 - Merge segements back together
+    for index, item in enumerate(workingWatchLater):
+        #Merge in sequential videos
+        if sequentialWatchLater and (sequentialWatchLater[0][3]  <= item[3]):
+            workingWatchLater.insert(index, sequentialWatchLater[0])
+            sequentialWatchLater.pop(0)
+        #Merge in series videos
+        for row in range(len(sortedSeriesWatchLater)):
+            if sortedSeriesWatchLater[row] and sortedSeriesWatchLater[row][0][3] <= item[3] and sortedSeriesWatchLater[row][0][3] != item[4]:
+                workingWatchLater.insert(index, sortedSeriesWatchLater[row][0])
+                sortedSeriesWatchLater[row].pop(0)
+
+    #Merge in follow up videos
+    for row in followUpWatchLater:
+        for i in range(len(row)-1):
+            predecentVideoPosition = workingWatchLater.index(row[i])
+            if len(row)>3:
                 positionMovement = 2
             else:
                 positionMovement = 1
-            sortedwatchLaterList.insert(predecentVideoPosition+positionMovement, videoRecord)
-    sortedpriorityWatchLater = []
-    for i in range(len(priorityWatchLater)):
-        sortedpriorityWatchLater += sorted(priorityWatchLater[i], key=lambda x: x[5])
-    return sortedpriorityWatchLater + sortedwatchLaterList
+            workingWatchLater.remove(row[i+1])
+            workingWatchLater.insert(predecentVideoPosition+positionMovement, row[i+1])
+    #i=0
+    #while i in range(len(sortedSeriesList)):
+    #    samelist = [1 for x in sortedSeriesList if x[4] == sortedSeriesList[i][4]]
+    #    for j in range(len(samelist)-1):
+    #        sortedSeriesList[i+j][6] = watchLaterList[sortedSeriesList[i+j][0]][6]
+    #        sortedSeriesList[i+j+1][6] = watchLaterList[sortedSeriesList[i+j+1][0]][6]
+    #        videoToMoveIndex = sortedwatchLaterList.index(tuple(sortedSeriesList[i+j+1]))
+    #        sortedwatchLaterList.remove(sortedwatchLaterList[videoToMoveIndex])
+    #        videoIndex = sortedwatchLaterList.index(tuple(sortedSeriesList[i+j]))
+    #        if len(samelist) > 2:
+    #            sortedwatchLaterList.insert(videoIndex+2,tuple(sortedSeriesList[i+j+1]))
+    #        else:
+    #            sortedwatchLaterList.insert(videoIndex+1,tuple(sortedSeriesList[i+j+1]))
+    #    i += len(samelist)
+    
+    
+    #videoIDList = [item[2] for item in sortedwatchLaterList]
+    #for i in range(len(videoFollowUpList)-1):
+    #    if videoFollowUpList[2][i] in videoFollowUpList[0]:
+    #        predecentVideoPosition = videoIDList.index(videoFollowUpList[1][videoFollowUpList[0].index(videoFollowUpList[2][i])])
+    #        videoFollowUpPosition = videoIDList.index(videoFollowUpList[1][i])
+    #        videoRecord = sortedwatchLaterList.pop(videoFollowUpPosition)
+    #        if videoFollowUpPosition < predecentVideoPosition:
+    #            positionMovement = 2
+    #        else:
+    #            positionMovement = 1
+    #        sortedwatchLaterList.insert(predecentVideoPosition+positionMovement, videoRecord)
+    #sortedpriorityWatchLater = []
+    #for i in range(len(priorityWatchLater)):
+    #    sortedpriorityWatchLater += sorted(priorityWatchLater[i], key=lambda x: x[5])
+    return sortedpriorityWatchLater + workingWatchLater
 
 def renumberWatchLater(watchLater):
     for x in range(len(watchLater)):
