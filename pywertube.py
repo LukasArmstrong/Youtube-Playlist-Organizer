@@ -255,77 +255,75 @@ def printMultiList(*args):
         for element in list_:
             print(element, end=' ')
         print('\n')
-    
+
+#=========================================
+#         SORTING WATCHLATER
+#=========================================   
 def getPriorityVideos(watchLaterList, creatorDict, keywordDict, priorityThreshold, durationThreshold):
-    nonPriority = watchLaterList.copy()
-    creatorDict = filterDict(creatorDict, ">", priorityThreshold)
-    keywordDict = filterDict(keywordDict, ">", priorityThreshold)
-    setValues = set(list(creatorDict.values()))
-    setValues.update(list(keywordDict.values()))
-    scoreSet = sorted(list(setValues), reverse=True)
-    priorityWatchLater = [[] for i in range(len(scoreSet))]
+    nonPriority = watchLaterList.copy() #creates copy to return non priority videos as well
+    creatorDict = filterDict(creatorDict, ">", priorityThreshold) #Filter dictionary for creators not considered priority. Priority changes with size of watchlater
+    keywordDict = filterDict(keywordDict, ">", priorityThreshold) #Filter dictionary for Keywords not considered priority. Priority changes with size of watchlater
+    setValues = set(list(creatorDict.values())) #remove duplicate priortity scores. Multiple creators are on the same tier of priority.
+    setValues.update(list(keywordDict.values())) #add any unique priority score from keyphrase
+    scoreSet = sorted(list(setValues), reverse=True) #sort priority scores from high to low
+    priorityWatchLater = [[] for i in range(len(scoreSet))]  #create 2d array where each row is a different creator priorirty score
     for item in watchLaterList:
-        keywordFound = False
+        keywordFound = False #init skip flag
         for word in keywordDict.keys():
             if word in item[6]:
                 if keywordDict[word] in scoreSet:
-                    scoreIndex = scoreSet.index(keywordDict[word])
-                    priorityWatchLater[scoreIndex].append(item)
-                    nonPriority.remove(item)
-                    keywordFound = True
+                    scoreIndex = scoreSet.index(keywordDict[word]) #find priority row index
+                    priorityWatchLater[scoreIndex].append(item) #add video to priority row
+                    nonPriority.remove(item) #remove priority video from non-priority list
+                    keywordFound = True #set skip flag
                     break
         if keywordFound:
-            continue
+            continue #if keyphrase is found in item, don't care if creator of video is also priority. Skip over last section
         if item[4] in creatorDict.keys():
-            if item[3]<(durationThreshold):
+            if item[3]<(durationThreshold): #duration limit important because some priority creators live stream and release VOD later. Not currently interested in VOD
                 if creatorDict[item[4]] in scoreSet:
-                    scoreIndex = scoreSet.index(creatorDict[item[4]])
-                    priorityWatchLater[scoreIndex].append(item)
-                    nonPriority.remove(item)
+                    scoreIndex = scoreSet.index(creatorDict[item[4]]) #find priority row index
+                    priorityWatchLater[scoreIndex].append(item) #add videot o priority row
+                    nonPriority.remove(item) #remove priority video from non-priority list
     return priorityWatchLater, nonPriority
 
 def getSerializedVideos(watchLaterList, numSerKeywords, serKeywords):
-    nonSerialized = watchLaterList.copy()
-    patternString = r"(%s)\s\d+" % "|".join(numSerKeywords) + "|(%s)" % "|".join(serKeywords)
-    seriesPattern = re.compile(patternString, re.IGNORECASE)
-    seriesList = []
+    nonSerialized = watchLaterList.copy() #creates copy to return non serialized videos as well
+    seriesPattern = re.compile(r"(%s)\s\d+" % "|".join(numSerKeywords) + "|(%s)" % "|".join(serKeywords), re.IGNORECASE) #create complicated regex pattern to find serialized videos through keywords
+    creators = [i[4] for i in watchLaterList] #pull out creators from given list
+    creatorsSet = list(set(creators)) #remove dups
+    seriesList = [[] for i in range(len(creatorsSet))] #create 2d array where each row is a different creator
     for item in watchLaterList:
-        result = seriesPattern.search(item[6])
+        result = seriesPattern.search(item[6]) #check if pattern in video title
         if result:
-            seriesList.append(item)
-            nonSerialized.remove(item)
+            scoreIndex = creatorsSet.index(item[4]) #postion in list determines row number
+            seriesList[scoreIndex].append(item) #place corresponding videos to creator row
+            nonSerialized.remove(item) #remove serialized video from non-serialized list
     return seriesList, nonSerialized
 
 def getSequentialVideos(watchLaterList, sequentialCreators):
     return [i for i in watchLaterList if i[4] in sequentialCreators]
 
-def getFollowUpVideos(watchLaterList, FollowUpList):
-    videos = [item for item in watchLaterList if item[2] in FollowUpList[1]]
-    ids = [v for i, v in enumerate(FollowUpList[0]) if FollowUpList[2][i] is None]
-    nullCount = FollowUpList[2].count(None)
+def getFollowUpVideos(watchLaterList, FollowUpIDList):
+    videos = [item for item in watchLaterList if item[2] in FollowUpIDList[1]]
+    ids = [v for i, v in enumerate(FollowUpIDList[0]) if FollowUpIDList[2][i] is None]
+    nullCount = FollowUpIDList[2].count(None)
     FollowUpWatchLater = [[] for i in range(nullCount)]
-    for index, id in enumerate(FollowUpList[2]):
+    for index, id in enumerate(FollowUpIDList[2]):
         if id is None: 
-            idIndex = ids.index(FollowUpList[0][index])
+            idIndex = ids.index(FollowUpIDList[0][index])
         else:
             idIndex = ids.index(id)
         FollowUpWatchLater[idIndex].append(videos[index])
     return FollowUpWatchLater
 
 def sortSeriesVideos(watchLaterList):
-    creators = [i[4] for i in watchLaterList]
-    creatorsSet = list(set(creators))
-    seriresWatchLater = [[] for i in range(len(creatorsSet))]
-    for video in watchLaterList:
-        scoreIndex = creatorsSet.index(video[4])
-        seriresWatchLater[scoreIndex].append(video)
-    for row in seriresWatchLater:
-        row = natsorted(row, key=lambda x: x[6])
-    return seriresWatchLater
+    for row in watchLaterList:
+        row = natsorted(row, key=lambda x: x[6]) #since each creator has own method for ordering videos, natsort each creator individually
+    return watchLaterList
 
-def sortWatcherLater(watchLaterList, creatorDict, keywordDict, numSerKeywords, serKeywords, videoFollowUpList):
+def sortWatcherLater(watchLaterList, creatorDict, keywordDict, numSerKeywords, serKeywords, videoIDFollowUpList):
     #WatchLaterList structured as (position on yt, playlist id for yt, video id for yt, duration in seconds, creator, published time in unix time, video title)
-    workingWatchLater = watchLaterList.copy()
     videoCountThreshold = 50 #Number of items in list to determine priority limit
     durationThreshold = 41*60 #41 minutes in seconds / Wanted to include anything that is 40 minutes + change and under. Main goal is to stop super long content from choking up the priority queue.
     #How priority is defined
@@ -337,7 +335,7 @@ def sortWatcherLater(watchLaterList, creatorDict, keywordDict, numSerKeywords, s
 
     #Step 1 - Get sublists
     priorityWatchLater, workingWatchLater = getPriorityVideos(watchLaterList, creatorDict, keywordDict, priorityThreshold, durationThreshold)
-    followUpWatchLater = getFollowUpVideos(workingWatchLater, videoFollowUpList)
+    followUpWatchLater = getFollowUpVideos(workingWatchLater, videoIDFollowUpList)
     seriesWatchLater, workingWatchLater = getSerializedVideos(workingWatchLater, numSerKeywords, serKeywords)
     sequentialWatchLater = getSequentialVideos(workingWatchLater, sequentialCreators)
     workingWatchLater = [i for i in workingWatchLater if i not in sequentialWatchLater]
@@ -350,7 +348,7 @@ def sortWatcherLater(watchLaterList, creatorDict, keywordDict, numSerKeywords, s
     sequentialWatchLater.sort(key=lambda x: x[5]) #Sort by publish time
     workingWatchLater.sort( key=lambda x: (x[3], x[5])) #Sort by duration then publish time
 
-    #Step 3 - Merge segements back together
+    #Step 3 - Merge sequential and series segments back together
     for index, item in enumerate(workingWatchLater):
         #Merge in sequential videos
         if sequentialWatchLater and (sequentialWatchLater[0][3]  <= item[3]):
@@ -362,7 +360,7 @@ def sortWatcherLater(watchLaterList, creatorDict, keywordDict, numSerKeywords, s
                 workingWatchLater.insert(index, sortedSeriesWatchLater[row][0])
                 sortedSeriesWatchLater[row].pop(0)
 
-    #Merge in follow up videos
+    #Step 4 - Reorder follow up videos
     for row in followUpWatchLater:
         for i in range(len(row)-1):
             predecentVideoPosition = workingWatchLater.index(row[i])
@@ -372,6 +370,8 @@ def sortWatcherLater(watchLaterList, creatorDict, keywordDict, numSerKeywords, s
                 positionMovement = 1
             workingWatchLater.remove(row[i+1])
             workingWatchLater.insert(predecentVideoPosition+positionMovement, row[i+1])
+
+    #Step 5 - Combine priority and non-priority watch later
     return sortedpriorityWatchLater + workingWatchLater
 
 def renumberWatchLater(watchLater):
