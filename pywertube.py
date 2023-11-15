@@ -104,7 +104,7 @@ def getCredentials(portNumber, clientSecretFile="client_secret-Youtube_GhostTheT
             saveCredentails(credentials)
     return credentials
 
-def getFlowObject(clientSecretFile="client_secret-Youtube_GhostTheToast.json"):
+def getFlowObject(clientSecretFile):
      return InstalledAppFlow.from_client_secrets_file(
         clientSecretFile,
         scopes=["https://www.googleapis.com/auth/youtube",

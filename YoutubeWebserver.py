@@ -55,14 +55,14 @@ def sort():
 @app.route('/renew', methods=['GET'])  
 def reNewToken():
     if request.method == 'GET':
-        flow = pt.getFlowObject()
+        flow = pt.getFlowObject( clientSecretFile)
         flow.run_local_server()
         flow.authorized_session()
         credentials = flow.credentials
         pt.saveCredentails(credentials)
     return 'renewed!'
 
-database, mariaPort, password, serverIp, user, projectID, portNumber, playlistID, hostIP, hostPort = pt.getProjectVariables("config.yaml")
+database, mariaPort, password, serverIp, user, projectID, portNumber, playlistID, clientSecretFile, hostIP, hostPort = pt.getProjectVariables("config.yaml")
 
 numberedSerializedKeywords = ['series', 'part', 'finale', 'episode', 'ep', 'smarter every day']
 serializedKeywords = ['finale']
