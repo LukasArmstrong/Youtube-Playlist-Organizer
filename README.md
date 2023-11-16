@@ -136,17 +136,20 @@ This started because I wanted to sort my watch later list on youtube by duration
 
 
 
-<!--
+
 ## Usage
 
-Use this space to show useful examples of how a project can be used. Additional screenshots, code examples and demos work well in this space. You may also link to more resources.
-
-_For more examples, please refer to the [Documentation](https://example.com)_
-
+Admitedly, this where most of the work needs to be done. Currently, to run the sorting algorithm, you go to go to:
+- ```url
+  http://<YOUR_HOST_IP>/sort
+  ```
+However before the first sort, you'll need to get a token. This is done by:
+- ```url
+  http://<YOUR_HOST_IP>/renew
+  ```
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 
--->
 <!-- ROADMAP -->
 ## Roadmap
 
