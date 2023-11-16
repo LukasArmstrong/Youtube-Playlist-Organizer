@@ -75,7 +75,7 @@
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
-[![Product Name Screen Shot][product-screenshot]](https://example.com)
+<!-- [![Product Name Screen Shot][product-screenshot]](https://example.com) -->
 
 This started because I wanted to sort my watch later list on youtube by duration with some key execepts to priority, some videos being in a series, some creators release order mattering, and one-off videos being follow up to longer videos. After I accomplish this goal and refactored the code a bit, I decided to keep enhancing the project. There are lots of little things I would like to add to make this a poweruser tool. However, unless something changes with the Youtube API quota limit, I doubt very many people will able to use this project in it's entirety. I would consider this project in its infancy still, but others are welcome to fork or make suggestions for changes.
 
