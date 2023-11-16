@@ -21,7 +21,7 @@
 <br />
 <div align="center">
   <a href="https://github.com/LukasArmstrong/pywerTube">
-    <img src="images/PywerTube.png" alt="Logo" width="80" height="80">
+    <img src="Images/PywerTube.png" alt="Logo" width="80" height="80">
   </a>
 
 <h3 align="center">PywerTube</h3>
