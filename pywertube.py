@@ -354,7 +354,7 @@ def sortSeriesVideos(watchLaterList):
         row = natsorted(row, key=lambda x: x[6]) #since each creator has own method for ordering videos, natsort each creator individually
     return watchLaterList
 
-def sortWatcherLater(watchLaterList, creatorDict, keywordDict, numSerKeywords, serKeywords, videoIDFollowUpList, sequentialCreators):
+def sortWatchLater(watchLaterList, creatorDict, keywordDict, numSerKeywords, serKeywords, videoIDFollowUpList, sequentialCreators):
     #WatchLaterList structured as (position on yt, playlist id for yt, video id for yt, duration in seconds, creator, published time in unix time, video title)
     videoCountThreshold = 50 #Number of items in list to determine priority limit
     durationThreshold = 41*60 #41 minutes in seconds / Wanted to include anything that is 40 minutes + change and under. Main goal is to stop super long content from choking up the priority queue.
