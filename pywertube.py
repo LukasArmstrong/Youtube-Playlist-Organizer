@@ -10,6 +10,38 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from natsort import natsorted, ns
 import yaml
+import structlog
+#==================================
+#            Logging
+#==================================
+def getLogger():
+    BASE_DIR = os.path.dirname(__file__)
+    os.makedirs(os.path.join(BASE_DIR, "logs"), exist_ok=True)
+    LOG_DIR = BASE_DIR  + "logs\\" +os.path.basename(__file__)+".log"
+    LOG_FILE = f"{BASE_DIR}logs\\{os.path.basename(__file__)}.log"
+
+    structlog.configure( 
+        processors=[ 
+            structlog.contextvars.merge_contextvars,
+            structlog.processors.TimeStamper(fmt="iso"),
+            structlog.stdlib.add_log_level,
+            structlog.processors.EventRenamer("msg"),
+            structlog.processors.CallsiteParameterAdder(
+                [structlog.processors.CallsiteParameter.FUNC_NAME,
+                structlog.processors.CallsiteParameter.LINENO,
+                structlog.processors.CallsiteParameter.PROCESS,
+                structlog.processors.CallsiteParameter.THREAD]
+            ),
+            structlog.processors.dict_tracebacks,
+            structlog.processors.JSONRenderer(),
+        ], 
+        context_class=dict, 
+        logger_factory=structlog.WriteLoggerFactory(
+            file=Path(LOG_DIR).with_suffix(".log").open("a+")
+        ), 
+        cache_logger_on_first_use=True
+    )
+    return structlog.get_logger()
 #
 def getProjectVariables(file):
     with open(file, 'r') as f:
