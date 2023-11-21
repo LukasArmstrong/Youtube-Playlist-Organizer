@@ -37,7 +37,7 @@ def getLogger():
         ], 
         context_class=dict, 
         logger_factory=structlog.WriteLoggerFactory(
-            file=Path(LOG_DIR).with_suffix(".log").open("a+")
+            file=open(LOG_FILE,"a+")
         ), 
         cache_logger_on_first_use=True
     )
@@ -244,7 +244,7 @@ def insertVideo2WatchLater(conn, youtube, playlistID, videoID):
     watchLater = getWatchLaterDB(conn)
     videoDetails = getVideoYT(youtube,videoID)
     watchLater.append(len(watchLater), '', videoID, durationString2Sec(videoDetails["duration"]), videoDetails["creator"], dateString2EpochTime(videoDetails["published"]), videoDetails["title"])
-    sortedWatchLater = sortWatcherLater(watchLater,)
+    sortedWatchLater = sortWatchLater(watchLater,)
     updatePlaylist(youtube, playlistID, watchLater, sortedWatchLater)
 
 #Time Math
