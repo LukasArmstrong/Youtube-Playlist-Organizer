@@ -41,7 +41,7 @@ def sort():
         youtube = build("youtube", "v3", credentials=activeCredentials)
         youtubeWatchLater, requestOps = pt.getWatchLater(youtube, playlistID, True)
         quota += requestOps
-        sortedWatchLater = pt.sortWatcherLater(youtubeWatchLater, creatorDictionary, keywordDictionary, numberedSerializedKeywords, serializedKeywords, videoFollowUpList)
+        sortedWatchLater = pt.sortWatchLater(youtubeWatchLater, creatorDictionary, keywordDictionary, numberedSerializedKeywords, serializedKeywords, videoFollowUpList, sequentialCreators)
         videoOps, youtubeWatchLater = pt.updatePlaylist(youtubeWatchLater, sortedWatchLater, youtube, playlistID)
         youtubeWatchLater = pt.renumberWatchLater(youtubeWatchLater)
         quota += videoOps*50
@@ -66,6 +66,7 @@ database, mariaPort, password, serverIp, user, projectID, portNumber, playlistID
 
 numberedSerializedKeywords = ['series', 'part', 'finale', 'episode', 'ep', 'smarter every day']
 serializedKeywords = ['finale']
+sequentialCreators = ['Wintergatan']
 
 dbConnection = pt.getDataBaseConnection(user, password, serverIp, mariaPort, database)
 
