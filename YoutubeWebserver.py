@@ -1,10 +1,13 @@
 from flask import Flask, request, abort
 import xmltodict as x2d
 import pywertube as pt
+import uuid
+import mariadb
 from datetime import datetime as dt, timedelta
 from googleapiclient.discovery import build
 
 app = Flask(__name__)
+logger = pt.getLogger(__file__)
 dbConnection = None
 storedCreators = None
 
@@ -27,30 +30,40 @@ def webhook():
 
 @app.route('/sort', methods=['GET'])
 def sort():
+    #pt.structlog.threadlocal.clear_threadlocal()
+    #pt.structlog.threadlocal.bind_threadlocal(
+    #    view=request.path,
+    #    request_id=str(uuid.uuid4()),
+    #    peer=request.access_route[0],
+    #)
+    sortLog = logger.bind()
     if request.method == 'GET':
-        dbConnection = pt.getDataBaseConnection(user, password, serverIp, mariaPort, database)
-        Data = pt.getDataDB(dbConnection, "Creators", "creators", "priorityScore")
-        creatorDictionary = dict(Data)
-        Data = pt.getDataDB(dbConnection, "Keyphrases", "phrase", "score")
-        keywordDictionary = dict(Data)
-        Data = pt.getDataDB(dbConnection, "OrderVideos", "id", "videoID", "predecentVideoID")
-        videoFollowUpList = list(map(list, zip(*Data)))
-        quota, dbDate = pt.getQuotaAmount(dbConnection,projectID)
-
-        activeCredentials = pt.getCredentials(portNumber)
-        youtube = build("youtube", "v3", credentials=activeCredentials)
-        youtubeWatchLater, requestOps = pt.getWatchLater(youtube, playlistID, True)
-        quota += requestOps
-        sortedWatchLater = pt.sortWatchLater(youtubeWatchLater, creatorDictionary, keywordDictionary, numberedSerializedKeywords, serializedKeywords, videoFollowUpList, sequentialCreators)
-        videoOps, youtubeWatchLater = pt.updatePlaylist(youtubeWatchLater, sortedWatchLater, youtube, playlistID)
-        youtubeWatchLater = pt.renumberWatchLater(youtubeWatchLater)
-        quota += videoOps*50
-
-        pt.storeWatchLater(dbConnection, sortedWatchLater)
-
-        print("Quota cost incurred: " + str(quota))
-        pt.saveQuota(dbConnection, dbDate, quota, 1)
-        return 'Sorted!'
+        try:
+            sortLog.info("Entering GET Request")
+            dbConnection = pt.getDataBaseConnection(user, password, serverIp, mariaPort, database, sortLog)
+            Data = pt.getDataDB(dbConnection, "Creators", ["creators", "priorityScore"], sortLog)
+            creatorDictionary = dict(Data)
+            Data = pt.getDataDB(dbConnection, "Keyphrases", ["phrase", "score"], sortLog)
+            keywordDictionary = dict(Data)
+            Data = pt.getDataDB(dbConnection, "OrderVideos", ["id", "videoID", "predecentVideoID"], sortLog)
+            videoFollowUpList = list(map(list, zip(*Data)))
+            quota, dbDate = pt.getQuotaAmount(dbConnection,projectID)
+            activeCredentials = pt.getCredentials(portNumber)
+            youtube = build("youtube", "v3", credentials=activeCredentials)
+            youtubeWatchLater, requestOps = pt.getWatchLater(youtube, playlistID, True)
+            quota += requestOps
+            sortedWatchLater = pt.sortWatchLater(youtubeWatchLater, creatorDictionary, keywordDictionary, numberedSerializedKeywords, serializedKeywords, videoFollowUpList, sequentialCreators)
+            videoOps, youtubeWatchLater = pt.updatePlaylist(youtubeWatchLater, sortedWatchLater, youtube, playlistID)
+            youtubeWatchLater = pt.renumberWatchLater(youtubeWatchLater)
+            quota += videoOps*50
+            pt.storeWatchLaterDB(dbConnection, sortedWatchLater,sortLog)
+            print("Quota cost incurred: " + str(quota))
+            pt.saveQuota(dbConnection, dbDate, quota, 1)
+            dbConnection.close()
+            return 'Sorted!'
+        except Exception:
+            #sortLog.error(f"Error occured while attemping to sort: {e}")
+            return  'Error during Sorting!'
 
 @app.route('/renew', methods=['GET'])  
 def reNewToken():
@@ -66,8 +79,8 @@ database, mariaPort, password, serverIp, user, projectID, portNumber, playlistID
 
 numberedSerializedKeywords = ['series', 'part', 'finale', 'episode', 'ep', 'smarter every day']
 serializedKeywords = ['finale']
-sequentialCreators = ['Wintergatan']
+sequentialCreators = ['Wintergatan', 'LegalEagle','penguinz0', 'AntsCanada']
 
-dbConnection = pt.getDataBaseConnection(user, password, serverIp, mariaPort, database)
+dbConnection = pt.getDataBaseConnection(user, password, serverIp, mariaPort, database, logger)
 
 app.run(host=hostIP, port=hostPort)

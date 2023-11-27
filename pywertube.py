@@ -14,11 +14,10 @@ import structlog
 #==================================
 #            Logging
 #==================================
-def getLogger():
-    BASE_DIR = os.path.dirname(__file__)
+def getLogger(file):
+    BASE_DIR = os.path.dirname(file)
     os.makedirs(os.path.join(BASE_DIR, "logs"), exist_ok=True)
-    LOG_DIR = BASE_DIR  + "logs\\" +os.path.basename(__file__)+".log"
-    LOG_FILE = f"{BASE_DIR}logs\\{os.path.basename(__file__)}.log"
+    LOG_FILE = f"{BASE_DIR}\\logs\\{os.path.basename(file)[:-3]}.log"
 
     structlog.configure( 
         processors=[ 
@@ -37,20 +36,17 @@ def getLogger():
         ], 
         context_class=dict, 
         logger_factory=structlog.WriteLoggerFactory(
-            file=open(LOG_FILE,"a+")
+            file=open(LOG_FILE,'a+')
         ), 
         cache_logger_on_first_use=True
     )
     return structlog.get_logger()
-#
-def getProjectVariables(file):
-    with open(file, 'r') as f:
-        projectVariables = yaml.safe_load(f)
-    return tuple(projectVariables.values())
 
 #MariaDB/SQL functions to store data
-def getDataBaseConnection(usr, pswd, host, port,db):
+def getDataBaseConnection(usr, pswd, host, port, db, logger):
+    logger.info("Entering 'GetDataBaseConnection...")
     try:
+        logger.info("Attempting MariaDB connection")
         conn = mariadb.connect(
             user = usr,
             password = pswd,
@@ -58,51 +54,83 @@ def getDataBaseConnection(usr, pswd, host, port,db):
             port = port,
             database = db
         )
+        logger.info("Database Connection established!")
     except mariadb.Error as e:
-        raise ValueError(f"Error connecting to MariaDB Platform: {e}")
+        logger.error(f"Error connecting to MariaDB Platform: {e}", usr=usr, pswd=pswd, host=host, port=port, db=db)
+        raise mariadb.Error(e)
     return conn
 
-def getDataDB(conn, tableString, *cols):
+def getDataDB(conn, tableString, cols, logger):
+    logger.info("Entering 'getDataDB'...")
+    logger.info("Checking types...")
+    checkType(tableString, str, logger)
+    checkType(cols, list, logger)
     cur = conn.cursor()
+    logger.info("Get connection cursor obtained...")
     query = "Select " + " ,".join(cols) +" from " + tableString
-    cur.execute(query)
+    try:
+        logger.info("Attempting query...")
+        cur.execute(query)
+        logger.info("Query Successful!")
+    except mariadb.Error as e:
+        logger.error(f"Error executing query {query}. See error: {e}", conn=conn, tableString=tableString, cols=cols)
+        raise mariadb.Error(e)
     return cur.fetchall()
 
-def getWatchLaterDB(conn):
+def setDataDB(conn, tableString, cols_list, vals_list, logger, optionsString=""):
+    logger.info("Entering 'setDataDB'...")
+    logger.info("Checking Number of Columns = Number of values to assign...")
+    if len(cols_list) != len(vals_list):
+        logger.error("Lengths of Columns and Values differ!", DB_Connection = conn, Table = tableString, Columns = cols_list, Values = vals_list)
+        raise ValueError("Lengths of Columns and Values differ!")
+    logger.info("Checking types...")
+    checkType(tableString, str, logger)
+    checkType(cols_list, list, logger)
+    checkType(vals_list, list, logger)
+    checkType(optionsString, str, logger)
     cur = conn.cursor()
-    cur.execute(
-        "Select * from WatchLaterList"
-    )
-    watchlater = []
-    for item in cur:
-        watchlater.append(item[0],item[1],item[2],item[3],item[4],item[5],item[6])
-    return watchlater
-
-def insertTime(conn, creatorID, dateTimeString, videoID):
-    cur = conn.cursor()
-    cur.execute(
-        "Insert Into uploadTimes(creatorID, publishTime, videoID) Values (?,?,?)", (creatorID, dateTimeString, videoID)
-    )
-    conn.commit()
-
-def insertCreator(conn, creatorString, channelIDString, priorityScore=0):
-    cur = conn.cursor()
-    cur.execute(
-        "INSERT INTO Creators(creators,priorityScore,channelId) Values(?,?,?)", (creatorString, priorityScore, channelIDString)
-    )
-    conn.commit()
-
-def storeWatchLater(conn, watchlater):
-    cur = conn.cursor()
-    cur.execute(
-        "DELETE FROM WatchLaterList"
-    )
-    conn.commit()
-    for video in watchlater:
-        cur.execute(
-            "INSERT INTO WatchLaterList(position, playlistID, videoID, duration, creator, publishedTimeUTC, title) VALUE (?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE position=Value(position)", (video[0], video[1], video[2], video[3], video[4], video[5], video[6])
-        )
+    logger.info("Set connection cursor obtained...")
+    query = f"Insert Into {tableString}{*cols_list,}"
+    query = query.replace("'", "`")
+    query += f" Values {*vals_list,} {optionsString}"
+    try:
+        logger.info("Attempting query...")
+        cur.execute(query)
+        logger.info("Query Successful!")
         conn.commit()
+        logger.info("Query Committed!")
+    except mariadb.Error as e:
+        logger.error(f"Error executing query {query}. See error: {e}", DB_Connection = conn, Table = tableString, Columns = cols_list, Values = vals_list)
+        raise mariadb.Error(e)
+
+def clearTableDB(conn, tableString, logger):
+    logger.info("Entering 'delDataDB'...")
+    logger.info("Checking types...")
+    checkType(tableString, str, logger)
+    cur = conn.cursor()
+    logger.info("Delete connection cursor obtained...")
+    query = f"Delete From {tableString}"
+    try:
+        logger.info("Attempting query...")
+        cur.execute(query)
+        logger.info("Query Successful!")
+        conn.commit()
+        logger.info("Query Committed!")
+    except mariadb.Error as e:
+        logger.error(f"Error executing query {query}. See error: {e}", DB_Connection = conn, Table = tableString)
+        raise mariadb.Error(e)
+
+def storeWatchLaterDB(conn, watchlater, logger):
+    logger.info("Entering 'storeWatchLaterDB'...")
+    logger.info("Checking types...")
+    checkType(watchlater, list, logger)
+    clearTableDB(conn, 'WatchLaterList', logger)
+    logger.info("WatchLaterList Cleared...")
+    logger.info("Filling new list...")
+    for video in watchlater:
+        setDataDB(conn, 'WatchLaterList', ['position', 'playlistID', 'videoID', 'duration', 'creator', 'publishedTimeUTC', 'title'], list(video), logger, 'ON DUPLICATE KEY UPDATE position=Value(position)')
+    logger.info("Watch Later stored in database!")
+        
 
 #Youtube API
 def getCredentials(portNumber, clientSecretFile="client_secret-Youtube_GhostTheToast.json"):
@@ -380,6 +408,7 @@ def sortWatchLater(watchLaterList, creatorDict, keywordDict, numSerKeywords, ser
     workingWatchLater.sort( key=lambda x: (x[3], x[5])) #Sort by duration then publish time
 
     #Step 3 - Merge sequential and series segments back together
+    #TODO - Break up this step
     for index, item in enumerate(workingWatchLater):
         #Merge in sequential videos
         if sequentialWatchLater and (sequentialWatchLater[0][3]  <= item[3]):
@@ -439,3 +468,14 @@ def saveQuota(connection, dateString, quota, projectID):
             "UPDATE QuotaLimit SET Amount = ? WHERE Date = ? and projectID = ?", (quota, dateString, projectID)
         )
     connection.commit()
+
+#Quality of Life
+def checkType(var, type, logger):
+    if not isinstance(var, type):
+        logger.error(f"{var} not of {type}!", variable=var, type=type)
+        raise TypeError(f"{var} not of type: {type}!")
+
+def getProjectVariables(file):
+    with open(file, 'r') as f:
+        projectVariables = yaml.safe_load(f)
+    return tuple(projectVariables.values())
