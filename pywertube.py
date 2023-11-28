@@ -165,7 +165,7 @@ def storeWatchLaterDB(conn, watchlater, logger):
         
 
 #==================================
-#           SQL/MariaDB
+#    Qouta Controller Functions
 #==================================
 def getQuotaUsed(connection, projectID, logger):
     logger.info("Entering 'getQuotaUsed'...")
@@ -198,8 +198,9 @@ def setQuotaUsed(connection, inDB, quota, projectID, logger):
         optionsString = f"Where Date = {dt.date.today()} and projectID = {projectID}"
         updateDataDB(connection, 'QuotaLimit', ['Amount'], [quota], logger, optionsString)
         
-
-#Youtube API
+#==================================
+#          Youtube API
+#==================================
 def getCredentials(portNumber, clientSecretFile="client_secret-Youtube_GhostTheToast.json"):
     credentials =  None
     # token.pickle stores the user's credentials from previously successful logins
