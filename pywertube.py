@@ -42,9 +42,17 @@ def getLogger(file):
     )
     return structlog.get_logger()
 
-#MariaDB/SQL functions to store data
+#==================================
+#           SQL/MariaDB
+#==================================
 def getDataBaseConnection(usr, pswd, host, port, db, logger):
     logger.info("Entering 'GetDataBaseConnection...")
+    logger.info("Checking types...")
+    checkType(usr, str, logger)
+    checkType(pswd, str, logger)
+    checkType(host, str, logger)
+    checkType(port, int, logger)
+    checkType(db, str, logger)
     try:
         logger.info("Attempting MariaDB connection")
         conn = mariadb.connect(
@@ -60,14 +68,14 @@ def getDataBaseConnection(usr, pswd, host, port, db, logger):
         raise mariadb.Error(e)
     return conn
 
-def getDataDB(conn, tableString, cols, logger):
+def getDataDB(conn, tableString, cols, logger, optionsString=""):
     logger.info("Entering 'getDataDB'...")
     logger.info("Checking types...")
     checkType(tableString, str, logger)
     checkType(cols, list, logger)
     cur = conn.cursor()
     logger.info("Get connection cursor obtained...")
-    query = "Select " + " ,".join(cols) +" from " + tableString
+    query = "Select " + " ,".join(cols) +" from " + tableString + " " + optionsString
     try:
         logger.info("Attempting query...")
         cur.execute(query)
@@ -93,6 +101,30 @@ def setDataDB(conn, tableString, cols_list, vals_list, logger, optionsString="")
     query = f"Insert Into {tableString}{*cols_list,}"
     query = query.replace("'", "`")
     query += f" Values {*vals_list,} {optionsString}"
+    try:
+        logger.info("Attempting query...")
+        cur.execute(query)
+        logger.info("Query Successful!")
+        conn.commit()
+        logger.info("Query Committed!")
+    except mariadb.Error as e:
+        logger.error(f"Error executing query {query}. See error: {e}", DB_Connection = conn, Table = tableString, Columns = cols_list, Values = vals_list)
+        raise mariadb.Error(e)
+
+def updateDataDB(conn, tableString, cols_list, vals_list, logger, optionsString=""):
+    logger.info("Entering 'updateDataDB'...")
+    logger.info("Checking Number of Columns = Number of values to assign...")
+    if len(cols_list) != len(vals_list):
+        logger.error("Lengths of Columns and Values differ!", DB_Connection = conn, Table = tableString, Columns = cols_list, Values = vals_list)
+        raise ValueError("Lengths of Columns and Values differ!")
+    logger.info("Checking types...")
+    checkType(tableString, str, logger)
+    checkType(cols_list, list, logger)
+    checkType(vals_list, list, logger)
+    checkType(optionsString, str, logger)
+    cur = conn.cursor()
+    logger.info("Update connection cursor obtained...")
+    query = f"Update {tableString} set { ', '.join(f'`{x}` = {str(vals_list[i])}' for i, x in enumerate(cols_list)) } {optionsString}"
     try:
         logger.info("Attempting query...")
         cur.execute(query)
@@ -130,6 +162,41 @@ def storeWatchLaterDB(conn, watchlater, logger):
     for video in watchlater:
         setDataDB(conn, 'WatchLaterList', ['position', 'playlistID', 'videoID', 'duration', 'creator', 'publishedTimeUTC', 'title'], list(video), logger, 'ON DUPLICATE KEY UPDATE position=Value(position)')
     logger.info("Watch Later stored in database!")
+        
+
+#==================================
+#           SQL/MariaDB
+#==================================
+def getQuotaUsed(connection, projectID, logger):
+    logger.info("Entering 'getQuotaUsed'...")
+    optionString = "Where(projectID= "+ str(projectID) + ")"
+    logger.debug(f"Where statement: {optionString}")
+    logger.info("Getting Latest date...")
+    dbDate = getDataDB(connection, 'QuotaLimit', ['MAX(date)'], logger, optionString)
+    logger.info("Latest date obtained...")
+    logger.info("Perfroming logic if date is today or not...")
+    if dt.datetime.today() == dbDate:
+        logger.info("Date is today...")
+        optionString= f"Where Date = {dbDate} and projectID = {projectID}"
+        logger.debug(f"Where statement: {optionString}")
+        logger.info("Getting used quota...")
+        amount = getDataDB(connection,'QuotaLimit', ['Amount'], logger, optionString)
+        logger.info("Returning used quota and date...")
+        return amount, True
+    else:
+        logger.info("Date is not today...")
+        logger.info("Reseting quota...")
+        return 0, False
+
+def setQuotaUsed(connection, inDB, quota, projectID, logger):
+    logger.info("Entering 'setQuotaUsed'...")
+    if not inDB:
+        logger.info("Creating new quota record...")
+        setDataDB(connection, 'QuotaLimit', ['date', 'amount', 'projectID'], [dt.date.today(), quota, projectID], logger)
+    else:
+        logger.info("Updating quota record...")
+        optionsString = f"Where Date = {dt.date.today()} and projectID = {projectID}"
+        updateDataDB(connection, 'QuotaLimit', ['Amount'], [quota], logger, optionsString)
         
 
 #Youtube API
@@ -268,8 +335,8 @@ def getVideoYT(youtube, videoID):
         }
     return videoDetails
 
-def insertVideo2WatchLater(conn, youtube, playlistID, videoID):
-    watchLater = getWatchLaterDB(conn)
+def insertVideo2WatchLater(conn, youtube, playlistID, videoID, logger):
+    watchLater = getDataDB(conn, 'WatchLaterList ', ['*'], logger)
     videoDetails = getVideoYT(youtube,videoID)
     watchLater.append(len(watchLater), '', videoID, durationString2Sec(videoDetails["duration"]), videoDetails["creator"], dateString2EpochTime(videoDetails["published"]), videoDetails["title"])
     sortedWatchLater = sortWatchLater(watchLater,)
@@ -438,36 +505,6 @@ def renumberWatchLater(watchLater):
     for x in range(len(watchLater)):
         watchLater[x] = (x, watchLater[x][1], watchLater[x][2], watchLater[x][3], watchLater[x][4], watchLater[x][5], watchLater[x][6])
     return watchLater
-
-#Quota Management
-def getQuotaAmount(connection, projectID):
-    datePatternString = "%Y-%m-%d"
-    cur = connection.cursor()
-    query = "SELECT MAX(date) FROM QuotaLimit Where(projectID= "+ str(projectID) + ")"
-    cur.execute(query)
-    for d_ in cur:
-        dbDate = d_[0].strftime(datePatternString)
-    if dt.datetime.now().strftime(datePatternString) == dbDate:
-        cur.execute(
-            "SELECT Amount FROM QuotaLimit Where Date = ? and projectID = ?" , (dbDate, projectID)
-        )
-        for amount in cur:
-            return amount[0], dbDate
-    else:
-        return 0, dbDate
-
-def saveQuota(connection, dateString, quota, projectID):
-    cur = connection.cursor()
-    todayDateString = dt.datetime.now().strftime("%Y-%m-%d")
-    if dateString != todayDateString:
-        cur.execute(
-            "INSERT INTO QuotaLimit(date, amount, projectID) VALUES (?,?,?)", (todayDateString, quota, projectID)
-        )
-    else:
-        cur.execute(
-            "UPDATE QuotaLimit SET Amount = ? WHERE Date = ? and projectID = ?", (quota, dateString, projectID)
-        )
-    connection.commit()
 
 #Quality of Life
 def checkType(var, type, logger):
