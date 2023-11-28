@@ -38,8 +38,8 @@ def sort():
     #)
     sortLog = logger.bind()
     if request.method == 'GET':
+        sortLog.info("Entering GET Request")
         try:
-            sortLog.info("Entering GET Request")
             dbConnection = pt.getDataBaseConnection(user, password, serverIp, mariaPort, database, sortLog)
             Data = pt.getDataDB(dbConnection, "Creators", ["creators", "priorityScore"], sortLog)
             creatorDictionary = dict(Data)
@@ -47,24 +47,34 @@ def sort():
             keywordDictionary = dict(Data)
             Data = pt.getDataDB(dbConnection, "OrderVideos", ["id", "videoID", "predecentVideoID"], sortLog)
             videoFollowUpList = list(map(list, zip(*Data)))
-            quota, dbDate = pt.getQuotaAmount(dbConnection,projectID)
-            activeCredentials = pt.getCredentials(portNumber)
-            youtube = build("youtube", "v3", credentials=activeCredentials)
-            youtubeWatchLater, requestOps = pt.getWatchLater(youtube, playlistID, True)
-            quota += requestOps
-            sortedWatchLater = pt.sortWatchLater(youtubeWatchLater, creatorDictionary, keywordDictionary, numberedSerializedKeywords, serializedKeywords, videoFollowUpList, sequentialCreators)
-            videoOps, youtubeWatchLater = pt.updatePlaylist(youtubeWatchLater, sortedWatchLater, youtube, playlistID)
-            youtubeWatchLater = pt.renumberWatchLater(youtubeWatchLater)
-            quota += videoOps*50
+            quota, inDB = pt.getQuotaUsed(dbConnection,projectID,sortLog)
+            try:
+                activeCredentials = pt.getCredentials(portNumber)
+                youtube = build("youtube", "v3", credentials=activeCredentials)
+                youtubeWatchLater, requestOps = pt.getWatchLater(youtube, playlistID, True)
+                quota += requestOps
+                try: 
+                    sortedWatchLater = pt.sortWatchLater(youtubeWatchLater, creatorDictionary, keywordDictionary, numberedSerializedKeywords, serializedKeywords, videoFollowUpList, sequentialCreators)
+                    try:
+                        videoOps, youtubeWatchLater = pt.updatePlaylist(youtubeWatchLater, sortedWatchLater, youtube, playlistID)
+                        youtubeWatchLater = pt.renumberWatchLater(youtubeWatchLater)
+                        quota += videoOps*50
+                    except Exception:
+                        return "Error updating yt watch later"
+                except Exception:
+                    return "Error sorting Watch Later"
+            except Exception:
+                return "Error getting yt credentials or watchlater list"
+        except Exception:
+            return "Error getting data from DB"
+        try:
             pt.storeWatchLaterDB(dbConnection, sortedWatchLater,sortLog)
             print("Quota cost incurred: " + str(quota))
-            pt.saveQuota(dbConnection, dbDate, quota, 1)
+            pt.setQuotaUsed(dbConnection, inDB, quota, 1, sortLog)
             dbConnection.close()
-            return 'Sorted!'
         except Exception:
-            #sortLog.error(f"Error occured while attemping to sort: {e}")
-            return  'Error during Sorting!'
-
+            return "Error setting data in DB"
+        return 'Sorted!'
 @app.route('/renew', methods=['GET'])  
 def reNewToken():
     if request.method == 'GET':
