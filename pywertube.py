@@ -343,47 +343,6 @@ def insertVideo2WatchLater(conn, youtube, playlistID, videoID, logger):
     sortedWatchLater = sortWatchLater(watchLater,)
     updatePlaylist(youtube, playlistID, watchLater, sortedWatchLater)
 
-#Time Math
-def durationString2Sec(durationString, hours_pattern=re.compile(r'(\d+)H'), minutes_pattern=re.compile(r'(\d+)M'), seconds_pattern=re.compile(r'(\d+)S')):
-    hoursString = hours_pattern.search(durationString)
-    minutesString = minutes_pattern.search(durationString)
-    secondsString = seconds_pattern.search(durationString)
-
-    hours = int(hoursString.group(1)) if hoursString else 0
-    minutes = int(minutesString.group(1)) if minutesString else 0
-    seconds = int(secondsString.group(1)) if secondsString else 0
-
-    video_seconds = dt.timedelta(
-        hours=hours,
-        minutes=minutes,
-        seconds=seconds
-    ).total_seconds()
-    return video_seconds
-
-def dateString2EpochTime(dateString, time_pattern="%Y-%m-%dT%H:%M:%SZ"):
-    d = dt.datetime.strptime(dateString, time_pattern)
-    epoch = dt.datetime(1970,1,1)
-    return (d-epoch).total_seconds()
-
-def filterDict(dict, string, threshold): 
-    ops = {
-        "<" : operator.ge,
-        "<=" : operator.gt,
-        ">" : operator.le,
-        ">=" : operator.lt
-    }
-    tempDict = dict.copy()
-    for key, value in dict.items():
-        if ops[string](value,threshold):
-            del tempDict[key]
-    return tempDict
-
-def printMultiList(*args):
-    for list_ in args:
-        for element in list_:
-            print(element, end=' ')
-        print('\n')
-
 #=========================================
 #         SORTING WATCHLATER
 #=========================================   
@@ -506,8 +465,9 @@ def renumberWatchLater(watchLater):
     for x in range(len(watchLater)):
         watchLater[x] = (x, watchLater[x][1], watchLater[x][2], watchLater[x][3], watchLater[x][4], watchLater[x][5], watchLater[x][6])
     return watchLater
-
-#Quality of Life
+#=========================================
+#        Quality of Life
+#========================================= 
 def checkType(var, type, logger):
     if not isinstance(var, type):
         logger.error(f"{var} not of {type}!", variable=var, type=type)
@@ -517,3 +477,43 @@ def getProjectVariables(file):
     with open(file, 'r') as f:
         projectVariables = yaml.safe_load(f)
     return tuple(projectVariables.values())
+
+def durationString2Sec(durationString, hours_pattern=re.compile(r'(\d+)H'), minutes_pattern=re.compile(r'(\d+)M'), seconds_pattern=re.compile(r'(\d+)S')):
+    hoursString = hours_pattern.search(durationString)
+    minutesString = minutes_pattern.search(durationString)
+    secondsString = seconds_pattern.search(durationString)
+
+    hours = int(hoursString.group(1)) if hoursString else 0
+    minutes = int(minutesString.group(1)) if minutesString else 0
+    seconds = int(secondsString.group(1)) if secondsString else 0
+
+    video_seconds = dt.timedelta(
+        hours=hours,
+        minutes=minutes,
+        seconds=seconds
+    ).total_seconds()
+    return video_seconds
+
+def dateString2EpochTime(dateString, time_pattern="%Y-%m-%dT%H:%M:%SZ"):
+    d = dt.datetime.strptime(dateString, time_pattern)
+    epoch = dt.datetime(1970,1,1)
+    return (d-epoch).total_seconds()
+
+def filterDict(dict, string, threshold): 
+    ops = {
+        "<" : operator.ge,
+        "<=" : operator.gt,
+        ">" : operator.le,
+        ">=" : operator.lt
+    }
+    tempDict = dict.copy()
+    for key, value in dict.items():
+        if ops[string](value,threshold):
+            del tempDict[key]
+    return tempDict
+
+def printMultiList(*args):
+    for list_ in args:
+        for element in list_:
+            print(element, end=' ')
+        print('\n')
