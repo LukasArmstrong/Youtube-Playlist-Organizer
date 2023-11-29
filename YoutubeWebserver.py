@@ -37,19 +37,20 @@ def sort():
     #    peer=request.access_route[0],
     #)
     sortLog = logger.bind()
+    pt.setLogger(sortLog)
     if request.method == 'GET':
         sortLog.info("Entering GET Request")
         try:
-            dbConnection = pt.getDataBaseConnection(user, password, serverIp, mariaPort, database, sortLog)
-            Data = pt.getDataDB(dbConnection, "Creators", ["creators", "priorityScore"], sortLog)
+            dbConnection = pt.getDataBaseConnection(user, password, serverIp, mariaPort, database)
+            Data = pt.getDataDB(dbConnection, "Creators", ["creators", "priorityScore"])
             creatorDictionary = dict(Data)
-            Data = pt.getDataDB(dbConnection, "Keyphrases", ["phrase", "score"], sortLog)
+            Data = pt.getDataDB(dbConnection, "Keyphrases", ["phrase", "score"])
             keywordDictionary = dict(Data)
-            Data = pt.getDataDB(dbConnection, "OrderVideos", ["id", "videoID", "predecentVideoID"], sortLog)
+            Data = pt.getDataDB(dbConnection, "OrderVideos", ["id", "videoID", "predecentVideoID"])
             videoFollowUpList = list(map(list, zip(*Data)))
-            quota, inDB = pt.getQuotaUsed(dbConnection,projectID,sortLog)
+            quota, inDB = pt.getQuotaUsed(dbConnection,projectID)
             try:
-                activeCredentials = pt.getCredentials(portNumber)
+                activeCredentials = pt.getCredentials(portNumber, clientSecretFile)
                 youtube = build("youtube", "v3", credentials=activeCredentials)
                 youtubeWatchLater, requestOps = pt.getWatchLater(youtube, playlistID, True)
                 quota += requestOps
@@ -68,9 +69,9 @@ def sort():
         except Exception:
             return "Error getting data from DB"
         try:
-            pt.storeWatchLaterDB(dbConnection, sortedWatchLater,sortLog)
+            pt.storeWatchLaterDB(dbConnection, sortedWatchLater)
             print("Quota cost incurred: " + str(quota))
-            pt.setQuotaUsed(dbConnection, inDB, quota, 1, sortLog)
+            pt.setQuotaUsed(dbConnection, inDB, quota, 1)
             dbConnection.close()
         except Exception:
             return "Error setting data in DB"
