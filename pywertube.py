@@ -11,9 +11,16 @@ from google.auth.transport.requests import Request
 from natsort import natsorted, ns
 import yaml
 import structlog
+
+#==================================
+#            Variables
+#==================================
+gNumStrikes = 3
+gLogger = None
 #==================================
 #            Logging
 #==================================
+
 def getLogger(file):
     BASE_DIR = os.path.dirname(file)
     os.makedirs(os.path.join(BASE_DIR, "logs"), exist_ok=True)
@@ -64,7 +71,7 @@ def getDataBaseConnection(usr, pswd, host, port, db, logger):
         )
         logger.info("Database Connection established!")
     except mariadb.Error as e:
-        logger.error(f"Error connecting to MariaDB Platform: {e}", usr=usr, pswd=pswd, host=host, port=port, db=db)
+        logger.error(f"Error connecting to MariaDB Platform.  Type: {type(e)} Arguements:{e}", usr=usr, pswd=pswd, host=host, port=port, db=db)
         raise mariadb.Error(e)
     return conn
 
@@ -81,7 +88,7 @@ def getDataDB(conn, tableString, cols, logger, optionsString=""):
         cur.execute(query)
         logger.info("Query Successful!")
     except mariadb.Error as e:
-        logger.error(f"Error executing query {query}. See error: {e}", conn=conn, tableString=tableString, cols=cols)
+        logger.error(f"Error executing query {query}.  Type: {type(e)} Arguements:{e}", conn=conn, tableString=tableString, cols=cols)
         raise mariadb.Error(e)
     return cur.fetchall()
 
@@ -108,8 +115,9 @@ def setDataDB(conn, tableString, cols_list, vals_list, logger, optionsString="")
         conn.commit()
         logger.info("Query Committed!")
     except mariadb.Error as e:
-        logger.error(f"Error executing query {query}. See error: {e}", DB_Connection = conn, Table = tableString, Columns = cols_list, Values = vals_list)
+        logger.error(f"Error executing query {query}.  Type: {type(e)} Arguements:{e}", DB_Connection = conn, Table = tableString, Columns = cols_list, Values = vals_list)
         raise mariadb.Error(e)
+    logger.info(f"Data in {tableString} set!")
 
 def updateDataDB(conn, tableString, cols_list, vals_list, logger, optionsString=""):
     logger.info("Entering 'updateDataDB'...")
@@ -132,8 +140,9 @@ def updateDataDB(conn, tableString, cols_list, vals_list, logger, optionsString=
         conn.commit()
         logger.info("Query Committed!")
     except mariadb.Error as e:
-        logger.error(f"Error executing query {query}. See error: {e}", DB_Connection = conn, Table = tableString, Columns = cols_list, Values = vals_list)
+        logger.error(f"Error executing query {query}.  Type: {type(e)} Arguements:{e}", DB_Connection = conn, Table = tableString, Columns = cols_list, Values = vals_list)
         raise mariadb.Error(e)
+    logger.info(f"{tableString} updated!")
 
 def clearTableDB(conn, tableString, logger):
     logger.info("Entering 'delDataDB'...")
@@ -149,8 +158,9 @@ def clearTableDB(conn, tableString, logger):
         conn.commit()
         logger.info("Query Committed!")
     except mariadb.Error as e:
-        logger.error(f"Error executing query {query}. See error: {e}", DB_Connection = conn, Table = tableString)
+        logger.error(f"Error executing query {query}.  Type: {type(e)} Arguements:{e}", DB_Connection = conn, Table = tableString)
         raise mariadb.Error(e)
+    logger.info(f"{tableString} cleared!")
 
 def storeWatchLaterDB(conn, watchlater, logger):
     logger.info("Entering 'storeWatchLaterDB'...")
@@ -192,110 +202,160 @@ def setQuotaUsed(connection, inDB, quota, projectID, logger):
     logger.info("Entering 'setQuotaUsed'...")
     if not inDB:
         logger.info("Creating new quota record...")
-        setDataDB(connection, 'QuotaLimit', ['date', 'amount', 'projectID'], [dt.date.today(), quota, projectID], logger)
+        setDataDB(connection, 'QuotaLimit', ['date', 'amount', 'projectID'], [dt.date.today().strftime("%Y/%m/%d"), quota, projectID], logger)
     else:
         logger.info("Updating quota record...")
         optionsString = f"Where Date = {dt.date.today()} and projectID = {projectID}"
         updateDataDB(connection, 'QuotaLimit', ['Amount'], [quota], logger, optionsString)
+    logger.info("Quota Set!")
         
 #==================================
 #          Youtube API
 #==================================
-def getCredentials(portNumber, clientSecretFile="client_secret-Youtube_GhostTheToast.json"):
+def getCredentials(portNumber, clientSecretFile, logger):
+    logger.info("Entering 'getCredentials'...")
     credentials =  None
     # token.pickle stores the user's credentials from previously successful logins
+    logger.info("Checking if token pickle exist...")
     if os.path.exists("token.pickle"):
-        print("Loading credentials from file...")
+        logger.info("Loading credentials token from file...")
         with open("token.pickle", "rb") as token:
             credentials = pickle.load(token)
-
+        logger.info("credentials token loaded")
     #If there is no valid credentials available, then either refresh the token or log in.
+    logger.info("Checking if credential token is valid...")
     if not credentials or not credentials.valid:
+        logger.info("Credential token not valid. Checking if expired...")
         if credentials and credentials.expired and credentials.refresh_token:
-            print("Refreshing access token...")
+            logger.info("Credential token expired and can be refreshed...")
+            logger.info("Refreshing access token...")
             credentials.refresh(Request())
-            saveCredentails(credentials)
+            logger.info("Token refreshed...")
+            logger.info("Saving new token...")
+            saveCredentails(credentials, logger)
         else:
-            print("Fetching new token...")
-            flow = InstalledAppFlow.from_client_secrets_file(
-                clientSecretFile,
-                scopes=["https://www.googleapis.com/auth/youtube",
-                        "https://www.googleapis.com/auth/youtube.force-ssl", 
-                        "https://www.googleapis.com/auth/youtubepartner"]
-            )
+            logger.info("Credential token expired and can _not_ be refreshed...")
+            logger.info("Fetching new token...")
+            flow = getFlowObject(clientSecretFile)
+            logger.info("Flow server created. Running...")
             flow.run_local_server(
                 port=portNumber, 
                 prompt="consent", 
                 authorization_prompt_message=""
             )
+            logger.info("Obtaining credential token...")
             credentials = flow.credentials
-            saveCredentails(credentials)
+            logger.info("Credential token obtained. Saving...")
+            saveCredentails(credentials, logger)
+    logger.info("Returning credentials")
     return credentials
 
-def getFlowObject(clientSecretFile):
-     return InstalledAppFlow.from_client_secrets_file(
+def getFlowObject(clientSecretFile, logger):
+    logger.info("Creating Flow object...")
+    return InstalledAppFlow.from_client_secrets_file(
         clientSecretFile,
         scopes=["https://www.googleapis.com/auth/youtube",
                 "https://www.googleapis.com/auth/youtube.force-ssl", 
                 "https://www.googleapis.com/auth/youtubepartner"]
     )
-    #flow.run_local_server(
-    #    port=portNumber, 
-    #    prompt="consent", 
-    #    authorization_prompt_message=""
-    #)
 
-def saveCredentails(credentials):
+def saveCredentails(credentials, logger):
+    logger.info("Entering 'saveCredentials'...")
     # Save credentials for the next run
     with open("token.pickle", "wb") as f:
-        print("Saving credentials for future use...")
+        logger.info("Saving credentials for future use...")
         pickle.dump(credentials, f)
+    logger.info("Credentails Saved!")
 
-def getWatchLater(youtube, playlistID, nextPageBoolean):
+def getWatchLater(youtube, playlistID, nextPageBoolean, logger):
+    logger.info("Entering 'getWatchLater'...")
+    logger.info("Initalizing variables...")
     nextPageToken = None
     numberRequest = 0
     watchLaterList = []
-    try:
-        while True:
-            pl_request = youtube.playlistItems().list(
-                part="contentDetails, snippet",
-                playlistId=playlistID,
-                maxResults = 50,
-                pageToken = nextPageToken
-            )
-
+    logger.info("Getting List...")
+    while True:
+        #Watch Later isn't available through the API, so have to use playlist as pseudo watch later list
+        logger.info("Creating youtube playlist request...")
+        pl_request = youtube.playlistItems().list(
+            part="contentDetails, snippet",
+            playlistId=playlistID,
+            maxResults = 50, #Youtube API won't allow more then 50 results per request. Per docs: https://developers.google.com/youtube/v3/docs/playlists/list
+            pageToken = nextPageToken
+        )
+        try:
+            logger.info("Executing youtube playlist request...")
             pl_response = pl_request.execute()
-            numberRequest += 1
-
-            for item in pl_response["items"]:
-                video = (item["snippet"]["position"], item["id"], item["contentDetails"]["videoId"])
-                vid_request = youtube.videos().list(
-                    part="contentDetails, snippet",
-                    id = item["contentDetails"]["videoId"],
-                )
+        except Exception as e:
+            logger.error(f"Error executing youtube playlist request. Type: {type(e)} Arguements:{e}")
+            raise RuntimeError(e)
+        numberRequest += 1 #Tracking quota usage
+        logger.info("Unpacking youtube playlist response...")
+        videoErrorCount = 0            
+        for item in pl_response["items"]:
+            video = (item["snippet"]["position"], item["id"], item["contentDetails"]["videoId"]) #tuple of position in watch later, playlist ID, and video ID
+            #Need more data to sort
+            logger.info("Creating youtube video request...")
+            vid_request = youtube.videos().list(
+                part="contentDetails, snippet", # the snippet property contains the channelId, title, description, tags, and categoryId properties. TODO: Make use description, tags, and categoryId properties. Data Science?
+                id = item["contentDetails"]["videoId"],
+            )
+            logger.info("Executing youtube video request...")
+            try:
                 vid_response = vid_request.execute()
-                for vid in vid_response["items"]:
-                    duration = durationString2Sec(vid["contentDetails"]["duration"])
-                    utcPublishedTime =  dateString2EpochTime(vid["snippet"]["publishedAt"])
-                    videoSnippet = (duration, vid["snippet"]["channelTitle"], utcPublishedTime, vid["snippet"]["title"])
-                video = video + videoSnippet
-                watchLaterList.append(video)
+            except Exception as e:
+                videoErrorCount += 1
+                if videoErrorCount > gNumStrikes:
+                    logger.error(f"Error executing youtube video request. All Strikes Used. Type: {type(e)} Arguements:{e}")
+                    raise RuntimeError(e) #TODO: Better handling. -Check Quota Limit -Strikes?
+                else:
+                    logger.warning(f"Unexcepted issue executing youtube video request. Strike: {videoErrorCount} Type: {type(e)} Arguements:{e}")
+                    pass
+            numberRequest += 1 #Tracking quota usage
+            logger.info("Unpacking youtube video response...")
+            for vid in vid_response["items"]:
+                logger.info("Converting video duration to more useful format...")
+                duration = durationString2Sec(vid["contentDetails"]["duration"])
+                logger.info("Converting video published date to more useful format...")
+                utcPublishedTime =  dateString2EpochTime(vid["snippet"]["publishedAt"])
+                logger.info("Storing video data...")
+                videoSnippet = (duration, vid["snippet"]["channelTitle"], utcPublishedTime, vid["snippet"]["title"])
+            logger.info("Combining video tuples...")
+            video = video + videoSnippet
+            logger.info("Adding video tuple to watch later list...")
+            watchLaterList.append(video)
+        logger.info("Checking if should get next page...")
+        if nextPageBoolean:
+            logger.info("Getting next page token...")    
+            nextPageToken = pl_response.get('nextPageToken')
 
-            if nextPageBoolean:    
-                nextPageToken = pl_response.get('nextPageToken')
-
-            if not nextPageToken:
-                break
-    except:
-        print("Failed to get Watch Later :(")
+        logger.info("Checking if next page token exist...")
+        if not nextPageToken:
+            logger.info("Next page token doesn't exist, breaking out of loop...")
+            break
+    logger.info("Returning watch later list and number of requests")
     return watchLaterList, numberRequest
         
-def updatePlaylist(watchLater, sortedWatchLater, youtube, playlistID):
+def updatePlaylist(watchLater, sortedWatchLater, youtube, playlistID,logger):
+    logger.info("Entering...")
+    logger.debug("Checking types...")
+    checkType(watchLater, list, logger)
+    checkType(sortedWatchLater, list, logger)
+    checkType(playlistID, str, logger)
+    #checkType youtube
+    #checkType logger
     numOperations = 0
+    videoErrorCount = 0
+    logger.debug("Initialized variables...", numOperations=numOperations, videoErrorCount=0)
+    logger.debug("Checking length of watch later")
     if len(watchLater) != len(sortedWatchLater):
-        raise ValueError("List must have the same size")
-    for x in range(len(watchLater)): 
-        if watchLater[x] != sortedWatchLater[x]:
+        logger.error("Length of watch later lists don't match!", watchLater=watchLater, sortedWatchLater=sortedWatchLater)
+        raise ValueError("Lists must have the same size")
+    logger.debug("Entering loop for watch later...")
+    for x in range(len(watchLater)):
+        logger.debug("Checking if video position on YT wach later same as sorted watch later...") 
+        if watchLater[x] != sortedWatchLater[x]: #naive approach to save on quota
+            logger.debug("Creating update request..")
             update_request = youtube.playlistItems().update(
                 part = "snippet",
                 body={
@@ -310,38 +370,69 @@ def updatePlaylist(watchLater, sortedWatchLater, youtube, playlistID):
                     }
                 }
             )
+            logger.debug("Attempting to execute update request...")
             try:
                 update_response = update_request.execute()
-            except ValueError:
-                print(f"Couldn't update {x[6]}. Please look into further")
-            numOperations += 1
-            watchLater.insert(x, watchLater.pop(watchLater.index(sortedWatchLater[x])))
-            print(update_response["snippet"]["title"])
-    print("Number of operations preformed: " + str(numOperations))
+                logger.debug("Execution Successful!")
+                try:
+                    logger.debug("incrementing num of operations...")
+                    numOperations += 1
+                    logger.debug("Moving video record to position in sorted list")
+                    watchLater.insert(x, watchLater.pop(watchLater.index(sortedWatchLater[x])))
+                except Exception as e:
+                    logger.error(f"Unexpect error updating watch later list! Type: {type(e)} Arguements:{e}")
+            except Exception as e:
+                videoErrorCount += 1
+                if videoErrorCount > gNumStrikes:
+                    logger.error(f"Error executing youtube update request. All Strikes Used. Type: {type(e)} Arguements:{e}")
+                    raise RuntimeError(e) #TODO: Better handling. -Check Quota Limit -Strikes?
+                else:
+                    logger.warning(f"Unexcepted issue executing youtube update request. Strike: {videoErrorCount} Type: {type(e)} Arguements:{e}")
+                    pass
+                logger.error(f"Couldn't update {x[6]}. Type: {type(e)} Arguements:{e}")
+    logger.debug(f"Number of operations preformed: {numOperations}")
+    gLogger.info("Leaving...")
     return numOperations, watchLater
 
 def getVideoYT(youtube, videoID):
+    gLogger.info("Enter...")
+    videoErrorCount = 0
+    videoDetails = []
+    gLogger.debug("Initialized variables...", videoErrorCount=videoErrorCount)
+    gLogger.debug("Creating YT api video request...")
     vid_request = youtube.videos().list(
-        part="contentDetails, snippet",
+        part="contentDetails, snippet", # the snippet property contains the channelId, title, description, tags, and categoryId properties. TODO: Make use description, tags, and categoryId properties. Data Science?
         id = videoID,
     )
-    vid_response = vid_request.execute()
-    videoDetails = []
-    for vid in vid_response["items"]:
-        videoDetails = {
-            "duration" : vid["contentDetails"]["duration"],
-            "creator" :  vid["snippet"]["channelTitle"], 
-            "published" : vid["snippet"]["publishedAt"],
-            "title" : vid["snippet"]["title"]
-        }
+    gLogger.info("Executing youtube video request...")
+    try:
+        vid_response = vid_request.execute()
+    except Exception as e:
+        videoErrorCount += 1
+        if videoErrorCount > gNumStrikes:
+            gLogger.error(f"Error executing youtube video request. All Strikes Used. Type: {type(e)} Arguements:{e}")
+            raise RuntimeError(e) #TODO: Better handling. -Check Quota Limit -Strikes?
+        else:
+            gLogger.warning(f"Unexcepted issue executing youtube video request. Strike: {videoErrorCount} Type: {type(e)} Arguements:{e}")
+            pass
+    gLogger.debug("Unpacking video response. Creating Dictionary")
+    vid = vid_response["items"]
+    #Better way to do this. Pretty sure response is already dictionary. Just trim/order structure dict.
+    videoDetails = {
+        "duration" : vid["contentDetails"]["duration"],
+        "creator" :  vid["snippet"]["channelTitle"], 
+        "published" : vid["snippet"]["publishedAt"],
+        "title" : vid["snippet"]["title"]
+    }            
+    gLogger.info("Leaving...")
     return videoDetails
 
-def insertVideo2WatchLater(conn, youtube, playlistID, videoID, logger):
-    watchLater = getDataDB(conn, 'WatchLaterList ', ['*'], logger)
-    videoDetails = getVideoYT(youtube,videoID)
-    watchLater.append(len(watchLater), '', videoID, durationString2Sec(videoDetails["duration"]), videoDetails["creator"], dateString2EpochTime(videoDetails["published"]), videoDetails["title"])
-    sortedWatchLater = sortWatchLater(watchLater,)
-    updatePlaylist(youtube, playlistID, watchLater, sortedWatchLater)
+#def insertVideo2WatchLater(conn, youtube, playlistID, videoID, logger):
+#    watchLater = getDataDB(conn, 'WatchLaterList ', ['*'], logger)
+#    videoDetails = getVideoYT(youtube,videoID)
+#    watchLater.append(len(watchLater), '', videoID, durationString2Sec(videoDetails["duration"]), videoDetails["creator"], dateString2EpochTime(videoDetails["published"]), videoDetails["title"])
+#    sortedWatchLater = sortWatchLater(watchLater,)
+#    updatePlaylist(youtube, playlistID, watchLater, sortedWatchLater)
 
 #=========================================
 #         SORTING WATCHLATER
@@ -412,7 +503,7 @@ def sortSeriesVideos(watchLaterList):
 def sortWatchLater(watchLaterList, creatorDict, keywordDict, numSerKeywords, serKeywords, videoIDFollowUpList, sequentialCreators):
     #WatchLaterList structured as (position on yt, playlist id for yt, video id for yt, duration in seconds, creator, published time in unix time, video title)
     videoCountThreshold = 50 #Number of items in list to determine priority limit
-    durationThreshold = 41*60 #41 minutes in seconds / Wanted to include anything that is 40 minutes + change and under. Main goal is to stop super long content from choking up the priority queue.
+    durationThreshold = 61*60 #61 minutes in seconds / Wanted to include anything that is 60 minutes + change and under. Main goal is to stop super long content from choking up the priority queue.
     #How priority is defined
     if len(watchLaterList) > videoCountThreshold:
         priorityThreshold = 0
@@ -469,9 +560,12 @@ def renumberWatchLater(watchLater):
 #        Quality of Life
 #========================================= 
 def checkType(var, type, logger):
+    logger.info("Entering 'checkType'...")
     if not isinstance(var, type):
         logger.error(f"{var} not of {type}!", variable=var, type=type)
         raise TypeError(f"{var} not of type: {type}!")
+    logger.debug(f"{var} is of type {type}")
+    logger.info("Leaving 'checkType'...")
 
 def getProjectVariables(file):
     with open(file, 'r') as f:
