@@ -21,7 +21,7 @@ gLogger = None
 #            Logging
 #==================================
 
-def getLogger(file):
+def initLogger(file):
     BASE_DIR = os.path.dirname(file)
     os.makedirs(os.path.join(BASE_DIR, "logs"), exist_ok=True)
     LOG_FILE = f"{BASE_DIR}\\logs\\{os.path.basename(file)[:-3]}.log"
@@ -49,19 +49,24 @@ def getLogger(file):
     )
     return structlog.get_logger()
 
+def setLogger(logger):
+    logger.info("Enter...")
+    gLogger = logger
+    gLogger.info("Leaving...")
+
 #==================================
 #           SQL/MariaDB
 #==================================
-def getDataBaseConnection(usr, pswd, host, port, db, logger):
-    logger.info("Entering 'GetDataBaseConnection...")
-    logger.info("Checking types...")
-    checkType(usr, str, logger)
-    checkType(pswd, str, logger)
-    checkType(host, str, logger)
-    checkType(port, int, logger)
-    checkType(db, str, logger)
+def getDataBaseConnection(usr, pswd, host, port, db):
+    gLogger.info("Entering 'GetDataBaseConnection...")
+    gLogger.info("Checking types...")
+    checkType(usr, str)
+    checkType(pswd, str)
+    checkType(host, str)
+    checkType(port, int)
+    checkType(db, str)
     try:
-        logger.info("Attempting MariaDB connection")
+        gLogger.info("Attempting MariaDB connection")
         conn = mariadb.connect(
             user = usr,
             password = pswd,
@@ -69,189 +74,189 @@ def getDataBaseConnection(usr, pswd, host, port, db, logger):
             port = port,
             database = db
         )
-        logger.info("Database Connection established!")
+        gLogger.info("Database Connection established!")
     except mariadb.Error as e:
-        logger.error(f"Error connecting to MariaDB Platform.  Type: {type(e)} Arguements:{e}", usr=usr, pswd=pswd, host=host, port=port, db=db)
+        gLogger.error(f"Error connecting to MariaDB Platform.  Type: {type(e)} Arguements:{e}", usr=usr, pswd=pswd, host=host, port=port, db=db)
         raise mariadb.Error(e)
     return conn
 
-def getDataDB(conn, tableString, cols, logger, optionsString=""):
-    logger.info("Entering 'getDataDB'...")
-    logger.info("Checking types...")
-    checkType(tableString, str, logger)
-    checkType(cols, list, logger)
+def getDataDB(conn, tableString, cols, optionsString=""):
+    gLogger.info("Entering 'getDataDB'...")
+    gLogger.info("Checking types...")
+    checkType(tableString, str)
+    checkType(cols, list)
     cur = conn.cursor()
-    logger.info("Get connection cursor obtained...")
+    gLogger.info("Get connection cursor obtained...")
     query = "Select " + " ,".join(cols) +" from " + tableString + " " + optionsString
     try:
-        logger.info("Attempting query...")
+        gLogger.info("Attempting query...")
         cur.execute(query)
-        logger.info("Query Successful!")
+        gLogger.info("Query Successful!")
     except mariadb.Error as e:
-        logger.error(f"Error executing query {query}.  Type: {type(e)} Arguements:{e}", conn=conn, tableString=tableString, cols=cols)
+        gLogger.error(f"Error executing query {query}.  Type: {type(e)} Arguements:{e}", conn=conn, tableString=tableString, cols=cols)
         raise mariadb.Error(e)
     return cur.fetchall()
 
-def setDataDB(conn, tableString, cols_list, vals_list, logger, optionsString=""):
-    logger.info("Entering 'setDataDB'...")
-    logger.info("Checking Number of Columns = Number of values to assign...")
+def setDataDB(conn, tableString, cols_list, vals_list, optionsString=""):
+    gLogger.info("Entering 'setDataDB'...")
+    gLogger.info("Checking Number of Columns = Number of values to assign...")
     if len(cols_list) != len(vals_list):
-        logger.error("Lengths of Columns and Values differ!", DB_Connection = conn, Table = tableString, Columns = cols_list, Values = vals_list)
+        gLogger.error("Lengths of Columns and Values differ!", DB_Connection = conn, Table = tableString, Columns = cols_list, Values = vals_list)
         raise ValueError("Lengths of Columns and Values differ!")
-    logger.info("Checking types...")
-    checkType(tableString, str, logger)
-    checkType(cols_list, list, logger)
-    checkType(vals_list, list, logger)
-    checkType(optionsString, str, logger)
+    gLogger.info("Checking types...")
+    checkType(tableString, str)
+    checkType(cols_list, list)
+    checkType(vals_list, list)
+    checkType(optionsString, str)
     cur = conn.cursor()
-    logger.info("Set connection cursor obtained...")
+    gLogger.info("Set connection cursor obtained...")
     query = f"Insert Into {tableString}{*cols_list,}"
     query = query.replace("'", "`")
     query += f" Values {*vals_list,} {optionsString}"
     try:
-        logger.info("Attempting query...")
+        gLogger.info("Attempting query...")
         cur.execute(query)
-        logger.info("Query Successful!")
+        gLogger.info("Query Successful!")
         conn.commit()
-        logger.info("Query Committed!")
+        gLogger.info("Query Committed!")
     except mariadb.Error as e:
-        logger.error(f"Error executing query {query}.  Type: {type(e)} Arguements:{e}", DB_Connection = conn, Table = tableString, Columns = cols_list, Values = vals_list)
+        gLogger.error(f"Error executing query {query}.  Type: {type(e)} Arguements:{e}", DB_Connection = conn, Table = tableString, Columns = cols_list, Values = vals_list)
         raise mariadb.Error(e)
-    logger.info(f"Data in {tableString} set!")
+    gLogger.info(f"Data in {tableString} set!")
 
-def updateDataDB(conn, tableString, cols_list, vals_list, logger, optionsString=""):
-    logger.info("Entering 'updateDataDB'...")
-    logger.info("Checking Number of Columns = Number of values to assign...")
+def updateDataDB(conn, tableString, cols_list, vals_list, optionsString=""):
+    gLogger.info("Entering 'updateDataDB'...")
+    gLogger.info("Checking Number of Columns = Number of values to assign...")
     if len(cols_list) != len(vals_list):
-        logger.error("Lengths of Columns and Values differ!", DB_Connection = conn, Table = tableString, Columns = cols_list, Values = vals_list)
+        gLogger.error("Lengths of Columns and Values differ!", DB_Connection = conn, Table = tableString, Columns = cols_list, Values = vals_list)
         raise ValueError("Lengths of Columns and Values differ!")
-    logger.info("Checking types...")
-    checkType(tableString, str, logger)
-    checkType(cols_list, list, logger)
-    checkType(vals_list, list, logger)
-    checkType(optionsString, str, logger)
+    gLogger.info("Checking types...")
+    checkType(tableString, str)
+    checkType(cols_list, list)
+    checkType(vals_list, list)
+    checkType(optionsString, str)
     cur = conn.cursor()
-    logger.info("Update connection cursor obtained...")
+    gLogger.info("Update connection cursor obtained...")
     query = f"Update {tableString} set { ', '.join(f'`{x}` = {str(vals_list[i])}' for i, x in enumerate(cols_list)) } {optionsString}"
     try:
-        logger.info("Attempting query...")
+        gLogger.info("Attempting query...")
         cur.execute(query)
-        logger.info("Query Successful!")
+        gLogger.info("Query Successful!")
         conn.commit()
-        logger.info("Query Committed!")
+        gLogger.info("Query Committed!")
     except mariadb.Error as e:
-        logger.error(f"Error executing query {query}.  Type: {type(e)} Arguements:{e}", DB_Connection = conn, Table = tableString, Columns = cols_list, Values = vals_list)
+        gLogger.error(f"Error executing query {query}.  Type: {type(e)} Arguements:{e}", DB_Connection = conn, Table = tableString, Columns = cols_list, Values = vals_list)
         raise mariadb.Error(e)
-    logger.info(f"{tableString} updated!")
+    gLogger.info(f"{tableString} updated!")
 
-def clearTableDB(conn, tableString, logger):
-    logger.info("Entering 'delDataDB'...")
-    logger.info("Checking types...")
-    checkType(tableString, str, logger)
+def clearTableDB(conn, tableString):
+    gLogger.info("Entering 'delDataDB'...")
+    gLogger.info("Checking types...")
+    checkType(tableString, str)
     cur = conn.cursor()
-    logger.info("Delete connection cursor obtained...")
+    gLogger.info("Delete connection cursor obtained...")
     query = f"Delete From {tableString}"
     try:
-        logger.info("Attempting query...")
+        gLogger.info("Attempting query...")
         cur.execute(query)
-        logger.info("Query Successful!")
+        gLogger.info("Query Successful!")
         conn.commit()
-        logger.info("Query Committed!")
+        gLogger.info("Query Committed!")
     except mariadb.Error as e:
-        logger.error(f"Error executing query {query}.  Type: {type(e)} Arguements:{e}", DB_Connection = conn, Table = tableString)
+        gLogger.error(f"Error executing query {query}.  Type: {type(e)} Arguements:{e}", DB_Connection = conn, Table = tableString)
         raise mariadb.Error(e)
-    logger.info(f"{tableString} cleared!")
+    gLogger.info(f"{tableString} cleared!")
 
-def storeWatchLaterDB(conn, watchlater, logger):
-    logger.info("Entering 'storeWatchLaterDB'...")
-    logger.info("Checking types...")
-    checkType(watchlater, list, logger)
-    clearTableDB(conn, 'WatchLaterList', logger)
-    logger.info("WatchLaterList Cleared...")
-    logger.info("Filling new list...")
+def storeWatchLaterDB(conn, watchlater):
+    gLogger.info("Entering 'storeWatchLaterDB'...")
+    gLogger.info("Checking types...")
+    checkType(watchlater, list)
+    clearTableDB(conn, 'WatchLaterList')
+    gLogger.info("WatchLaterList Cleared...")
+    gLogger.info("Filling new list...")
     for video in watchlater:
-        setDataDB(conn, 'WatchLaterList', ['position', 'playlistID', 'videoID', 'duration', 'creator', 'publishedTimeUTC', 'title'], list(video), logger, 'ON DUPLICATE KEY UPDATE position=Value(position)')
-    logger.info("Watch Later stored in database!")
+        setDataDB(conn, 'WatchLaterList', ['position', 'playlistID', 'videoID', 'duration', 'creator', 'publishedTimeUTC', 'title'], list(video), 'ON DUPLICATE KEY UPDATE position=Value(position)')
+    gLogger.info("Watch Later stored in database!")
         
 
 #==================================
 #    Qouta Controller Functions
 #==================================
-def getQuotaUsed(connection, projectID, logger):
-    logger.info("Entering 'getQuotaUsed'...")
+def getQuotaUsed(connection, projectID):
+    gLogger.info("Entering 'getQuotaUsed'...")
     optionString = "Where(projectID= "+ str(projectID) + ")"
-    logger.debug(f"Where statement: {optionString}")
-    logger.info("Getting Latest date...")
-    dbDate = getDataDB(connection, 'QuotaLimit', ['MAX(date)'], logger, optionString)
-    logger.info("Latest date obtained...")
-    logger.info("Perfroming logic if date is today or not...")
+    gLogger.debug(f"Where statement: {optionString}")
+    gLogger.info("Getting Latest date...")
+    dbDate = getDataDB(connection, 'QuotaLimit', ['MAX(date)'], optionString)
+    gLogger.info("Latest date obtained...")
+    gLogger.info("Perfroming logic if date is today or not...")
     if dt.datetime.today() == dbDate:
-        logger.info("Date is today...")
+        gLogger.info("Date is today...")
         optionString= f"Where Date = {dbDate} and projectID = {projectID}"
-        logger.debug(f"Where statement: {optionString}")
-        logger.info("Getting used quota...")
-        amount = getDataDB(connection,'QuotaLimit', ['Amount'], logger, optionString)
-        logger.info("Returning used quota and date...")
+        gLogger.debug(f"Where statement: {optionString}")
+        gLogger.info("Getting used quota...")
+        amount = getDataDB(connection,'QuotaLimit', ['Amount'], optionString)
+        gLogger.info("Returning used quota and date...")
         return amount, True
     else:
-        logger.info("Date is not today...")
-        logger.info("Reseting quota...")
+        gLogger.info("Date is not today...")
+        gLogger.info("Reseting quota...")
         return 0, False
 
-def setQuotaUsed(connection, inDB, quota, projectID, logger):
-    logger.info("Entering 'setQuotaUsed'...")
+def setQuotaUsed(connection, inDB, quota, projectID):
+    gLogger.info("Entering 'setQuotaUsed'...")
     if not inDB:
-        logger.info("Creating new quota record...")
-        setDataDB(connection, 'QuotaLimit', ['date', 'amount', 'projectID'], [dt.date.today().strftime("%Y/%m/%d"), quota, projectID], logger)
+        gLogger.info("Creating new quota record...")
+        setDataDB(connection, 'QuotaLimit', ['date', 'amount', 'projectID'], [dt.date.today().strftime("%Y/%m/%d"), quota, projectID])
     else:
-        logger.info("Updating quota record...")
+        gLogger.info("Updating quota record...")
         optionsString = f"Where Date = {dt.date.today()} and projectID = {projectID}"
-        updateDataDB(connection, 'QuotaLimit', ['Amount'], [quota], logger, optionsString)
-    logger.info("Quota Set!")
+        updateDataDB(connection, 'QuotaLimit', ['Amount'], [quota], optionsString)
+    gLogger.info("Quota Set!")
         
 #==================================
 #          Youtube API
 #==================================
-def getCredentials(portNumber, clientSecretFile, logger):
-    logger.info("Entering 'getCredentials'...")
+def getCredentials(portNumber, clientSecretFile):
+    gLogger.info("Entering 'getCredentials'...")
     credentials =  None
     # token.pickle stores the user's credentials from previously successful logins
-    logger.info("Checking if token pickle exist...")
+    gLogger.info("Checking if token pickle exist...")
     if os.path.exists("token.pickle"):
-        logger.info("Loading credentials token from file...")
+        gLogger.info("Loading credentials token from file...")
         with open("token.pickle", "rb") as token:
             credentials = pickle.load(token)
-        logger.info("credentials token loaded")
+        gLogger.info("credentials token loaded")
     #If there is no valid credentials available, then either refresh the token or log in.
-    logger.info("Checking if credential token is valid...")
+    gLogger.info("Checking if credential token is valid...")
     if not credentials or not credentials.valid:
-        logger.info("Credential token not valid. Checking if expired...")
+        gLogger.info("Credential token not valid. Checking if expired...")
         if credentials and credentials.expired and credentials.refresh_token:
-            logger.info("Credential token expired and can be refreshed...")
-            logger.info("Refreshing access token...")
+            gLogger.info("Credential token expired and can be refreshed...")
+            gLogger.info("Refreshing access token...")
             credentials.refresh(Request())
-            logger.info("Token refreshed...")
-            logger.info("Saving new token...")
-            saveCredentails(credentials, logger)
+            gLogger.info("Token refreshed...")
+            gLogger.info("Saving new token...")
+            saveCredentails(credentials)
         else:
-            logger.info("Credential token expired and can _not_ be refreshed...")
-            logger.info("Fetching new token...")
+            gLogger.info("Credential token expired and can _not_ be refreshed...")
+            gLogger.info("Fetching new token...")
             flow = getFlowObject(clientSecretFile)
-            logger.info("Flow server created. Running...")
+            gLogger.info("Flow server created. Running...")
             flow.run_local_server(
                 port=portNumber, 
                 prompt="consent", 
                 authorization_prompt_message=""
             )
-            logger.info("Obtaining credential token...")
+            gLogger.info("Obtaining credential token...")
             credentials = flow.credentials
-            logger.info("Credential token obtained. Saving...")
-            saveCredentails(credentials, logger)
-    logger.info("Returning credentials")
+            gLogger.info("Credential token obtained. Saving...")
+            saveCredentails(credentials)
+    gLogger.info("Returning credentials")
     return credentials
 
-def getFlowObject(clientSecretFile, logger):
-    logger.info("Creating Flow object...")
+def getFlowObject(clientSecretFile):
+    gLogger.info("Creating Flow object...")
     return InstalledAppFlow.from_client_secrets_file(
         clientSecretFile,
         scopes=["https://www.googleapis.com/auth/youtube",
@@ -259,24 +264,24 @@ def getFlowObject(clientSecretFile, logger):
                 "https://www.googleapis.com/auth/youtubepartner"]
     )
 
-def saveCredentails(credentials, logger):
-    logger.info("Entering 'saveCredentials'...")
+def saveCredentails(credentials):
+    gLogger.info("Entering 'saveCredentials'...")
     # Save credentials for the next run
     with open("token.pickle", "wb") as f:
-        logger.info("Saving credentials for future use...")
+        gLogger.info("Saving credentials for future use...")
         pickle.dump(credentials, f)
-    logger.info("Credentails Saved!")
+    gLogger.info("Credentails Saved!")
 
-def getWatchLater(youtube, playlistID, nextPageBoolean, logger):
-    logger.info("Entering 'getWatchLater'...")
-    logger.info("Initalizing variables...")
+def getWatchLater(youtube, playlistID, nextPageBoolean):
+    gLogger.info("Entering 'getWatchLater'...")
+    gLogger.info("Initalizing variables...")
     nextPageToken = None
     numberRequest = 0
     watchLaterList = []
-    logger.info("Getting List...")
+    gLogger.info("Getting List...")
     while True:
         #Watch Later isn't available through the API, so have to use playlist as pseudo watch later list
-        logger.info("Creating youtube playlist request...")
+        gLogger.info("Creating youtube playlist request...")
         pl_request = youtube.playlistItems().list(
             part="contentDetails, snippet",
             playlistId=playlistID,
@@ -284,78 +289,78 @@ def getWatchLater(youtube, playlistID, nextPageBoolean, logger):
             pageToken = nextPageToken
         )
         try:
-            logger.info("Executing youtube playlist request...")
+            gLogger.info("Executing youtube playlist request...")
             pl_response = pl_request.execute()
         except Exception as e:
-            logger.error(f"Error executing youtube playlist request. Type: {type(e)} Arguements:{e}")
+            gLogger.error(f"Error executing youtube playlist request. Type: {type(e)} Arguements:{e}")
             raise RuntimeError(e)
         numberRequest += 1 #Tracking quota usage
-        logger.info("Unpacking youtube playlist response...")
+        gLogger.info("Unpacking youtube playlist response...")
         videoErrorCount = 0            
         for item in pl_response["items"]:
             video = (item["snippet"]["position"], item["id"], item["contentDetails"]["videoId"]) #tuple of position in watch later, playlist ID, and video ID
             #Need more data to sort
-            logger.info("Creating youtube video request...")
+            gLogger.info("Creating youtube video request...")
             vid_request = youtube.videos().list(
                 part="contentDetails, snippet", # the snippet property contains the channelId, title, description, tags, and categoryId properties. TODO: Make use description, tags, and categoryId properties. Data Science?
                 id = item["contentDetails"]["videoId"],
             )
-            logger.info("Executing youtube video request...")
+            gLogger.info("Executing youtube video request...")
             try:
                 vid_response = vid_request.execute()
             except Exception as e:
                 videoErrorCount += 1
                 if videoErrorCount > gNumStrikes:
-                    logger.error(f"Error executing youtube video request. All Strikes Used. Type: {type(e)} Arguements:{e}")
+                    gLogger.error(f"Error executing youtube video request. All Strikes Used. Type: {type(e)} Arguements:{e}")
                     raise RuntimeError(e) #TODO: Better handling. -Check Quota Limit -Strikes?
                 else:
-                    logger.warning(f"Unexcepted issue executing youtube video request. Strike: {videoErrorCount} Type: {type(e)} Arguements:{e}")
+                    gLogger.warning(f"Unexcepted issue executing youtube video request. Strike: {videoErrorCount} Type: {type(e)} Arguements:{e}")
                     pass
             numberRequest += 1 #Tracking quota usage
-            logger.info("Unpacking youtube video response...")
+            gLogger.info("Unpacking youtube video response...")
             for vid in vid_response["items"]:
-                logger.info("Converting video duration to more useful format...")
+                gLogger.info("Converting video duration to more useful format...")
                 duration = durationString2Sec(vid["contentDetails"]["duration"])
-                logger.info("Converting video published date to more useful format...")
+                gLogger.info("Converting video published date to more useful format...")
                 utcPublishedTime =  dateString2EpochTime(vid["snippet"]["publishedAt"])
-                logger.info("Storing video data...")
+                gLogger.info("Storing video data...")
                 videoSnippet = (duration, vid["snippet"]["channelTitle"], utcPublishedTime, vid["snippet"]["title"])
-            logger.info("Combining video tuples...")
+            gLogger.info("Combining video tuples...")
             video = video + videoSnippet
-            logger.info("Adding video tuple to watch later list...")
+            gLogger.info("Adding video tuple to watch later list...")
             watchLaterList.append(video)
-        logger.info("Checking if should get next page...")
+        gLogger.info("Checking if should get next page...")
         if nextPageBoolean:
-            logger.info("Getting next page token...")    
+            gLogger.info("Getting next page token...")    
             nextPageToken = pl_response.get('nextPageToken')
 
-        logger.info("Checking if next page token exist...")
+        gLogger.info("Checking if next page token exist...")
         if not nextPageToken:
-            logger.info("Next page token doesn't exist, breaking out of loop...")
+            gLogger.info("Next page token doesn't exist, breaking out of loop...")
             break
-    logger.info("Returning watch later list and number of requests")
+    gLogger.info("Returning watch later list and number of requests")
     return watchLaterList, numberRequest
         
-def updatePlaylist(watchLater, sortedWatchLater, youtube, playlistID,logger):
-    logger.info("Entering...")
-    logger.debug("Checking types...")
-    checkType(watchLater, list, logger)
-    checkType(sortedWatchLater, list, logger)
-    checkType(playlistID, str, logger)
+def updatePlaylist(watchLater, sortedWatchLater, youtube, playlistID):
+    gLogger.info("Entering...")
+    gLogger.debug("Checking types...")
+    checkType(watchLater, list)
+    checkType(sortedWatchLater, list)
+    checkType(playlistID, str)
     #checkType youtube
-    #checkType logger
+    #checkType gLogger
     numOperations = 0
     videoErrorCount = 0
-    logger.debug("Initialized variables...", numOperations=numOperations, videoErrorCount=0)
-    logger.debug("Checking length of watch later")
+    gLogger.debug("Initialized variables...", numOperations=numOperations, videoErrorCount=0)
+    gLogger.debug("Checking length of watch later")
     if len(watchLater) != len(sortedWatchLater):
-        logger.error("Length of watch later lists don't match!", watchLater=watchLater, sortedWatchLater=sortedWatchLater)
+        gLogger.error("Length of watch later lists don't match!", watchLater=watchLater, sortedWatchLater=sortedWatchLater)
         raise ValueError("Lists must have the same size")
-    logger.debug("Entering loop for watch later...")
+    gLogger.debug("Entering loop for watch later...")
     for x in range(len(watchLater)):
-        logger.debug("Checking if video position on YT wach later same as sorted watch later...") 
+        gLogger.debug("Checking if video position on YT wach later same as sorted watch later...") 
         if watchLater[x] != sortedWatchLater[x]: #naive approach to save on quota
-            logger.debug("Creating update request..")
+            gLogger.debug("Creating update request..")
             update_request = youtube.playlistItems().update(
                 part = "snippet",
                 body={
@@ -370,27 +375,27 @@ def updatePlaylist(watchLater, sortedWatchLater, youtube, playlistID,logger):
                     }
                 }
             )
-            logger.debug("Attempting to execute update request...")
+            gLogger.debug("Attempting to execute update request...")
             try:
                 update_response = update_request.execute()
-                logger.debug("Execution Successful!")
+                gLogger.debug("Execution Successful!")
                 try:
-                    logger.debug("incrementing num of operations...")
+                    gLogger.debug("incrementing num of operations...")
                     numOperations += 1
-                    logger.debug("Moving video record to position in sorted list")
+                    gLogger.debug("Moving video record to position in sorted list")
                     watchLater.insert(x, watchLater.pop(watchLater.index(sortedWatchLater[x])))
                 except Exception as e:
-                    logger.error(f"Unexpect error updating watch later list! Type: {type(e)} Arguements:{e}")
+                    gLogger.error(f"Unexpect error updating watch later list! Type: {type(e)} Arguements:{e}")
             except Exception as e:
                 videoErrorCount += 1
                 if videoErrorCount > gNumStrikes:
-                    logger.error(f"Error executing youtube update request. All Strikes Used. Type: {type(e)} Arguements:{e}")
+                    gLogger.error(f"Error executing youtube update request. All Strikes Used. Type: {type(e)} Arguements:{e}")
                     raise RuntimeError(e) #TODO: Better handling. -Check Quota Limit -Strikes?
                 else:
-                    logger.warning(f"Unexcepted issue executing youtube update request. Strike: {videoErrorCount} Type: {type(e)} Arguements:{e}")
+                    gLogger.warning(f"Unexcepted issue executing youtube update request. Strike: {videoErrorCount} Type: {type(e)} Arguements:{e}")
                     pass
-                logger.error(f"Couldn't update {x[6]}. Type: {type(e)} Arguements:{e}")
-    logger.debug(f"Number of operations preformed: {numOperations}")
+                gLogger.error(f"Couldn't update {x[6]}. Type: {type(e)} Arguements:{e}")
+    gLogger.debug(f"Number of operations preformed: {numOperations}")
     gLogger.info("Leaving...")
     return numOperations, watchLater
 
@@ -427,8 +432,8 @@ def getVideoYT(youtube, videoID):
     gLogger.info("Leaving...")
     return videoDetails
 
-#def insertVideo2WatchLater(conn, youtube, playlistID, videoID, logger):
-#    watchLater = getDataDB(conn, 'WatchLaterList ', ['*'], logger)
+#def insertVideo2WatchLater(conn, youtube, playlistID, videoID):
+#    watchLater = getDataDB(conn, 'WatchLaterList ', ['*'])
 #    videoDetails = getVideoYT(youtube,videoID)
 #    watchLater.append(len(watchLater), '', videoID, durationString2Sec(videoDetails["duration"]), videoDetails["creator"], dateString2EpochTime(videoDetails["published"]), videoDetails["title"])
 #    sortedWatchLater = sortWatchLater(watchLater,)
@@ -559,13 +564,13 @@ def renumberWatchLater(watchLater):
 #=========================================
 #        Quality of Life
 #========================================= 
-def checkType(var, type, logger):
-    logger.info("Entering 'checkType'...")
+def checkType(var, type):
+    gLogger.info("Entering 'checkType'...")
     if not isinstance(var, type):
-        logger.error(f"{var} not of {type}!", variable=var, type=type)
+        gLogger.error(f"{var} not of {type}!", variable=var, type=type)
         raise TypeError(f"{var} not of type: {type}!")
-    logger.debug(f"{var} is of type {type}")
-    logger.info("Leaving 'checkType'...")
+    gLogger.debug(f"{var} is of type {type}")
+    gLogger.info("Leaving 'checkType'...")
 
 def getProjectVariables(file):
     with open(file, 'r') as f:
