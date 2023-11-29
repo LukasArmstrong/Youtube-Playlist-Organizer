@@ -11,14 +11,20 @@ from google.auth.transport.requests import Request
 from natsort import natsorted, ns
 import yaml
 import structlog
+
+#==================================
+#            Variables
+#==================================
+gNumStrikes = 3
+gLogger = None
 #==================================
 #            Logging
 #==================================
-def getLogger():
-    BASE_DIR = os.path.dirname(__file__)
+
+def initLogger(file):
+    BASE_DIR = os.path.dirname(file)
     os.makedirs(os.path.join(BASE_DIR, "logs"), exist_ok=True)
-    LOG_DIR = BASE_DIR  + "logs\\" +os.path.basename(__file__)+".log"
-    LOG_FILE = f"{BASE_DIR}logs\\{os.path.basename(__file__)}.log"
+    LOG_FILE = f"{BASE_DIR}\\logs\\{os.path.basename(file)[:-3]}.log"
 
     structlog.configure( 
         processors=[ 
@@ -37,20 +43,30 @@ def getLogger():
         ], 
         context_class=dict, 
         logger_factory=structlog.WriteLoggerFactory(
-            file=open(LOG_FILE,"a+")
+            file=open(LOG_FILE,'a+')
         ), 
         cache_logger_on_first_use=True
     )
     return structlog.get_logger()
-#
-def getProjectVariables(file):
-    with open(file, 'r') as f:
-        projectVariables = yaml.safe_load(f)
-    return tuple(projectVariables.values())
 
-#MariaDB/SQL functions to store data
-def getDataBaseConnection(usr, pswd, host, port,db):
+def setLogger(logger):
+    logger.info("Enter...")
+    gLogger = logger
+    gLogger.info("Leaving...")
+
+#==================================
+#           SQL/MariaDB
+#==================================
+def getDataBaseConnection(usr, pswd, host, port, db):
+    gLogger.info("Entering 'GetDataBaseConnection...")
+    gLogger.info("Checking types...")
+    checkType(usr, str)
+    checkType(pswd, str)
+    checkType(host, str)
+    checkType(port, int)
+    checkType(db, str)
     try:
+        gLogger.info("Attempting MariaDB connection")
         conn = mariadb.connect(
             user = usr,
             password = pswd,
@@ -58,148 +74,293 @@ def getDataBaseConnection(usr, pswd, host, port,db):
             port = port,
             database = db
         )
+        gLogger.info("Database Connection established!")
     except mariadb.Error as e:
-        raise ValueError(f"Error connecting to MariaDB Platform: {e}")
+        gLogger.error(f"Error connecting to MariaDB Platform.  Type: {type(e)} Arguements:{e}", usr=usr, pswd=pswd, host=host, port=port, db=db)
+        raise mariadb.Error(e)
     return conn
 
-def getDataDB(conn, tableString, *cols):
+def getDataDB(conn, tableString, cols, optionsString=""):
+    gLogger.info("Entering 'getDataDB'...")
+    gLogger.info("Checking types...")
+    checkType(tableString, str)
+    checkType(cols, list)
     cur = conn.cursor()
-    query = "Select " + " ,".join(cols) +" from " + tableString
-    cur.execute(query)
+    gLogger.info("Get connection cursor obtained...")
+    query = "Select " + " ,".join(cols) +" from " + tableString + " " + optionsString
+    try:
+        gLogger.info("Attempting query...")
+        cur.execute(query)
+        gLogger.info("Query Successful!")
+    except mariadb.Error as e:
+        gLogger.error(f"Error executing query {query}.  Type: {type(e)} Arguements:{e}", conn=conn, tableString=tableString, cols=cols)
+        raise mariadb.Error(e)
     return cur.fetchall()
 
-def getWatchLaterDB(conn):
+def setDataDB(conn, tableString, cols_list, vals_list, optionsString=""):
+    gLogger.info("Entering 'setDataDB'...")
+    gLogger.info("Checking Number of Columns = Number of values to assign...")
+    if len(cols_list) != len(vals_list):
+        gLogger.error("Lengths of Columns and Values differ!", DB_Connection = conn, Table = tableString, Columns = cols_list, Values = vals_list)
+        raise ValueError("Lengths of Columns and Values differ!")
+    gLogger.info("Checking types...")
+    checkType(tableString, str)
+    checkType(cols_list, list)
+    checkType(vals_list, list)
+    checkType(optionsString, str)
     cur = conn.cursor()
-    cur.execute(
-        "Select * from WatchLaterList"
-    )
-    watchlater = []
-    for item in cur:
-        watchlater.append(item[0],item[1],item[2],item[3],item[4],item[5],item[6])
-    return watchlater
-
-def insertTime(conn, creatorID, dateTimeString, videoID):
-    cur = conn.cursor()
-    cur.execute(
-        "Insert Into uploadTimes(creatorID, publishTime, videoID) Values (?,?,?)", (creatorID, dateTimeString, videoID)
-    )
-    conn.commit()
-
-def insertCreator(conn, creatorString, channelIDString, priorityScore=0):
-    cur = conn.cursor()
-    cur.execute(
-        "INSERT INTO Creators(creators,priorityScore,channelId) Values(?,?,?)", (creatorString, priorityScore, channelIDString)
-    )
-    conn.commit()
-
-def storeWatchLater(conn, watchlater):
-    cur = conn.cursor()
-    cur.execute(
-        "DELETE FROM WatchLaterList"
-    )
-    conn.commit()
-    for video in watchlater:
-        cur.execute(
-            "INSERT INTO WatchLaterList(position, playlistID, videoID, duration, creator, publishedTimeUTC, title) VALUE (?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE position=Value(position)", (video[0], video[1], video[2], video[3], video[4], video[5], video[6])
-        )
+    gLogger.info("Set connection cursor obtained...")
+    query = f"Insert Into {tableString}{*cols_list,}"
+    query = query.replace("'", "`")
+    query += f" Values {*vals_list,} {optionsString}"
+    try:
+        gLogger.info("Attempting query...")
+        cur.execute(query)
+        gLogger.info("Query Successful!")
         conn.commit()
+        gLogger.info("Query Committed!")
+    except mariadb.Error as e:
+        gLogger.error(f"Error executing query {query}.  Type: {type(e)} Arguements:{e}", DB_Connection = conn, Table = tableString, Columns = cols_list, Values = vals_list)
+        raise mariadb.Error(e)
+    gLogger.info(f"Data in {tableString} set!")
 
-#Youtube API
-def getCredentials(portNumber, clientSecretFile="client_secret-Youtube_GhostTheToast.json"):
+def updateDataDB(conn, tableString, cols_list, vals_list, optionsString=""):
+    gLogger.info("Entering 'updateDataDB'...")
+    gLogger.info("Checking Number of Columns = Number of values to assign...")
+    if len(cols_list) != len(vals_list):
+        gLogger.error("Lengths of Columns and Values differ!", DB_Connection = conn, Table = tableString, Columns = cols_list, Values = vals_list)
+        raise ValueError("Lengths of Columns and Values differ!")
+    gLogger.info("Checking types...")
+    checkType(tableString, str)
+    checkType(cols_list, list)
+    checkType(vals_list, list)
+    checkType(optionsString, str)
+    cur = conn.cursor()
+    gLogger.info("Update connection cursor obtained...")
+    query = f"Update {tableString} set { ', '.join(f'`{x}` = {str(vals_list[i])}' for i, x in enumerate(cols_list)) } {optionsString}"
+    try:
+        gLogger.info("Attempting query...")
+        cur.execute(query)
+        gLogger.info("Query Successful!")
+        conn.commit()
+        gLogger.info("Query Committed!")
+    except mariadb.Error as e:
+        gLogger.error(f"Error executing query {query}.  Type: {type(e)} Arguements:{e}", DB_Connection = conn, Table = tableString, Columns = cols_list, Values = vals_list)
+        raise mariadb.Error(e)
+    gLogger.info(f"{tableString} updated!")
+
+def clearTableDB(conn, tableString):
+    gLogger.info("Entering 'delDataDB'...")
+    gLogger.info("Checking types...")
+    checkType(tableString, str)
+    cur = conn.cursor()
+    gLogger.info("Delete connection cursor obtained...")
+    query = f"Delete From {tableString}"
+    try:
+        gLogger.info("Attempting query...")
+        cur.execute(query)
+        gLogger.info("Query Successful!")
+        conn.commit()
+        gLogger.info("Query Committed!")
+    except mariadb.Error as e:
+        gLogger.error(f"Error executing query {query}.  Type: {type(e)} Arguements:{e}", DB_Connection = conn, Table = tableString)
+        raise mariadb.Error(e)
+    gLogger.info(f"{tableString} cleared!")
+
+def storeWatchLaterDB(conn, watchlater):
+    gLogger.info("Entering 'storeWatchLaterDB'...")
+    gLogger.info("Checking types...")
+    checkType(watchlater, list)
+    clearTableDB(conn, 'WatchLaterList')
+    gLogger.info("WatchLaterList Cleared...")
+    gLogger.info("Filling new list...")
+    for video in watchlater:
+        setDataDB(conn, 'WatchLaterList', ['position', 'playlistID', 'videoID', 'duration', 'creator', 'publishedTimeUTC', 'title'], list(video), 'ON DUPLICATE KEY UPDATE position=Value(position)')
+    gLogger.info("Watch Later stored in database!")
+        
+
+#==================================
+#    Qouta Controller Functions
+#==================================
+def getQuotaUsed(connection, projectID):
+    gLogger.info("Entering 'getQuotaUsed'...")
+    optionString = "Where(projectID= "+ str(projectID) + ")"
+    gLogger.debug(f"Where statement: {optionString}")
+    gLogger.info("Getting Latest date...")
+    dbDate = getDataDB(connection, 'QuotaLimit', ['MAX(date)'], optionString)
+    gLogger.info("Latest date obtained...")
+    gLogger.info("Perfroming logic if date is today or not...")
+    if dt.datetime.today() == dbDate:
+        gLogger.info("Date is today...")
+        optionString= f"Where Date = {dbDate} and projectID = {projectID}"
+        gLogger.debug(f"Where statement: {optionString}")
+        gLogger.info("Getting used quota...")
+        amount = getDataDB(connection,'QuotaLimit', ['Amount'], optionString)
+        gLogger.info("Returning used quota and date...")
+        return amount, True
+    else:
+        gLogger.info("Date is not today...")
+        gLogger.info("Reseting quota...")
+        return 0, False
+
+def setQuotaUsed(connection, inDB, quota, projectID):
+    gLogger.info("Entering 'setQuotaUsed'...")
+    if not inDB:
+        gLogger.info("Creating new quota record...")
+        setDataDB(connection, 'QuotaLimit', ['date', 'amount', 'projectID'], [dt.date.today().strftime("%Y/%m/%d"), quota, projectID])
+    else:
+        gLogger.info("Updating quota record...")
+        optionsString = f"Where Date = {dt.date.today()} and projectID = {projectID}"
+        updateDataDB(connection, 'QuotaLimit', ['Amount'], [quota], optionsString)
+    gLogger.info("Quota Set!")
+        
+#==================================
+#          Youtube API
+#==================================
+def getCredentials(portNumber, clientSecretFile):
+    gLogger.info("Entering 'getCredentials'...")
     credentials =  None
     # token.pickle stores the user's credentials from previously successful logins
+    gLogger.info("Checking if token pickle exist...")
     if os.path.exists("token.pickle"):
-        print("Loading credentials from file...")
+        gLogger.info("Loading credentials token from file...")
         with open("token.pickle", "rb") as token:
             credentials = pickle.load(token)
-
+        gLogger.info("credentials token loaded")
     #If there is no valid credentials available, then either refresh the token or log in.
+    gLogger.info("Checking if credential token is valid...")
     if not credentials or not credentials.valid:
+        gLogger.info("Credential token not valid. Checking if expired...")
         if credentials and credentials.expired and credentials.refresh_token:
-            print("Refreshing access token...")
+            gLogger.info("Credential token expired and can be refreshed...")
+            gLogger.info("Refreshing access token...")
             credentials.refresh(Request())
+            gLogger.info("Token refreshed...")
+            gLogger.info("Saving new token...")
             saveCredentails(credentials)
         else:
-            print("Fetching new token...")
-            flow = InstalledAppFlow.from_client_secrets_file(
-                clientSecretFile,
-                scopes=["https://www.googleapis.com/auth/youtube",
-                        "https://www.googleapis.com/auth/youtube.force-ssl", 
-                        "https://www.googleapis.com/auth/youtubepartner"]
-            )
+            gLogger.info("Credential token expired and can _not_ be refreshed...")
+            gLogger.info("Fetching new token...")
+            flow = getFlowObject(clientSecretFile)
+            gLogger.info("Flow server created. Running...")
             flow.run_local_server(
                 port=portNumber, 
                 prompt="consent", 
                 authorization_prompt_message=""
             )
+            gLogger.info("Obtaining credential token...")
             credentials = flow.credentials
+            gLogger.info("Credential token obtained. Saving...")
             saveCredentails(credentials)
+    gLogger.info("Returning credentials")
     return credentials
 
 def getFlowObject(clientSecretFile):
-     return InstalledAppFlow.from_client_secrets_file(
+    gLogger.info("Creating Flow object...")
+    return InstalledAppFlow.from_client_secrets_file(
         clientSecretFile,
         scopes=["https://www.googleapis.com/auth/youtube",
                 "https://www.googleapis.com/auth/youtube.force-ssl", 
                 "https://www.googleapis.com/auth/youtubepartner"]
     )
-    #flow.run_local_server(
-    #    port=portNumber, 
-    #    prompt="consent", 
-    #    authorization_prompt_message=""
-    #)
 
 def saveCredentails(credentials):
+    gLogger.info("Entering 'saveCredentials'...")
     # Save credentials for the next run
     with open("token.pickle", "wb") as f:
-        print("Saving credentials for future use...")
+        gLogger.info("Saving credentials for future use...")
         pickle.dump(credentials, f)
+    gLogger.info("Credentails Saved!")
 
 def getWatchLater(youtube, playlistID, nextPageBoolean):
+    gLogger.info("Entering 'getWatchLater'...")
+    gLogger.info("Initalizing variables...")
     nextPageToken = None
     numberRequest = 0
     watchLaterList = []
-    try:
-        while True:
-            pl_request = youtube.playlistItems().list(
-                part="contentDetails, snippet",
-                playlistId=playlistID,
-                maxResults = 50,
-                pageToken = nextPageToken
-            )
-
+    gLogger.info("Getting List...")
+    while True:
+        #Watch Later isn't available through the API, so have to use playlist as pseudo watch later list
+        gLogger.info("Creating youtube playlist request...")
+        pl_request = youtube.playlistItems().list(
+            part="contentDetails, snippet",
+            playlistId=playlistID,
+            maxResults = 50, #Youtube API won't allow more then 50 results per request. Per docs: https://developers.google.com/youtube/v3/docs/playlists/list
+            pageToken = nextPageToken
+        )
+        try:
+            gLogger.info("Executing youtube playlist request...")
             pl_response = pl_request.execute()
-            numberRequest += 1
-
-            for item in pl_response["items"]:
-                video = (item["snippet"]["position"], item["id"], item["contentDetails"]["videoId"])
-                vid_request = youtube.videos().list(
-                    part="contentDetails, snippet",
-                    id = item["contentDetails"]["videoId"],
-                )
+        except Exception as e:
+            gLogger.error(f"Error executing youtube playlist request. Type: {type(e)} Arguements:{e}")
+            raise RuntimeError(e)
+        numberRequest += 1 #Tracking quota usage
+        gLogger.info("Unpacking youtube playlist response...")
+        videoErrorCount = 0            
+        for item in pl_response["items"]:
+            video = (item["snippet"]["position"], item["id"], item["contentDetails"]["videoId"]) #tuple of position in watch later, playlist ID, and video ID
+            #Need more data to sort
+            gLogger.info("Creating youtube video request...")
+            vid_request = youtube.videos().list(
+                part="contentDetails, snippet", # the snippet property contains the channelId, title, description, tags, and categoryId properties. TODO: Make use description, tags, and categoryId properties. Data Science?
+                id = item["contentDetails"]["videoId"],
+            )
+            gLogger.info("Executing youtube video request...")
+            try:
                 vid_response = vid_request.execute()
-                for vid in vid_response["items"]:
-                    duration = durationString2Sec(vid["contentDetails"]["duration"])
-                    utcPublishedTime =  dateString2EpochTime(vid["snippet"]["publishedAt"])
-                    videoSnippet = (duration, vid["snippet"]["channelTitle"], utcPublishedTime, vid["snippet"]["title"])
-                video = video + videoSnippet
-                watchLaterList.append(video)
+            except Exception as e:
+                videoErrorCount += 1
+                if videoErrorCount > gNumStrikes:
+                    gLogger.error(f"Error executing youtube video request. All Strikes Used. Type: {type(e)} Arguements:{e}")
+                    raise RuntimeError(e) #TODO: Better handling. -Check Quota Limit -Strikes?
+                else:
+                    gLogger.warning(f"Unexcepted issue executing youtube video request. Strike: {videoErrorCount} Type: {type(e)} Arguements:{e}")
+                    pass
+            numberRequest += 1 #Tracking quota usage
+            gLogger.info("Unpacking youtube video response...")
+            for vid in vid_response["items"]:
+                gLogger.info("Converting video duration to more useful format...")
+                duration = durationString2Sec(vid["contentDetails"]["duration"])
+                gLogger.info("Converting video published date to more useful format...")
+                utcPublishedTime =  dateString2EpochTime(vid["snippet"]["publishedAt"])
+                gLogger.info("Storing video data...")
+                videoSnippet = (duration, vid["snippet"]["channelTitle"], utcPublishedTime, vid["snippet"]["title"])
+            gLogger.info("Combining video tuples...")
+            video = video + videoSnippet
+            gLogger.info("Adding video tuple to watch later list...")
+            watchLaterList.append(video)
+        gLogger.info("Checking if should get next page...")
+        if nextPageBoolean:
+            gLogger.info("Getting next page token...")    
+            nextPageToken = pl_response.get('nextPageToken')
 
-            if nextPageBoolean:    
-                nextPageToken = pl_response.get('nextPageToken')
-
-            if not nextPageToken:
-                break
-    except:
-        print("Failed to get Watch Later :(")
+        gLogger.info("Checking if next page token exist...")
+        if not nextPageToken:
+            gLogger.info("Next page token doesn't exist, breaking out of loop...")
+            break
+    gLogger.info("Returning watch later list and number of requests")
     return watchLaterList, numberRequest
         
 def updatePlaylist(watchLater, sortedWatchLater, youtube, playlistID):
+    gLogger.info("Entering...")
+    gLogger.debug("Checking types...")
+    checkType(watchLater, list)
+    checkType(sortedWatchLater, list)
+    checkType(playlistID, str)
+    #checkType youtube
+    #checkType gLogger
     numOperations = 0
+    videoErrorCount = 0
+    gLogger.debug("Initialized variables...", numOperations=numOperations, videoErrorCount=0)
+    gLogger.debug("Checking length of watch later")
     if len(watchLater) != len(sortedWatchLater):
-        raise ValueError("List must have the same size")
-    for x in range(len(watchLater)): 
-        if watchLater[x] != sortedWatchLater[x]:
+        gLogger.error("Length of watch later lists don't match!", watchLater=watchLater, sortedWatchLater=sortedWatchLater)
+        raise ValueError("Lists must have the same size")
+    gLogger.debug("Entering loop for watch later...")
+    for x in range(len(watchLater)):
+        gLogger.debug("Checking if video position on YT wach later same as sorted watch later...") 
+        if watchLater[x] != sortedWatchLater[x]: #naive approach to save on quota
+            gLogger.debug("Creating update request..")
             update_request = youtube.playlistItems().update(
                 part = "snippet",
                 body={
@@ -214,79 +375,69 @@ def updatePlaylist(watchLater, sortedWatchLater, youtube, playlistID):
                     }
                 }
             )
+            gLogger.debug("Attempting to execute update request...")
             try:
                 update_response = update_request.execute()
-            except ValueError:
-                print(f"Couldn't update {x[6]}. Please look into further")
-            numOperations += 1
-            watchLater.insert(x, watchLater.pop(watchLater.index(sortedWatchLater[x])))
-            print(update_response["snippet"]["title"])
-    print("Number of operations preformed: " + str(numOperations))
+                gLogger.debug("Execution Successful!")
+                try:
+                    gLogger.debug("incrementing num of operations...")
+                    numOperations += 1
+                    gLogger.debug("Moving video record to position in sorted list")
+                    watchLater.insert(x, watchLater.pop(watchLater.index(sortedWatchLater[x])))
+                except Exception as e:
+                    gLogger.error(f"Unexpect error updating watch later list! Type: {type(e)} Arguements:{e}")
+            except Exception as e:
+                videoErrorCount += 1
+                if videoErrorCount > gNumStrikes:
+                    gLogger.error(f"Error executing youtube update request. All Strikes Used. Type: {type(e)} Arguements:{e}")
+                    raise RuntimeError(e) #TODO: Better handling. -Check Quota Limit -Strikes?
+                else:
+                    gLogger.warning(f"Unexcepted issue executing youtube update request. Strike: {videoErrorCount} Type: {type(e)} Arguements:{e}")
+                    pass
+                gLogger.error(f"Couldn't update {x[6]}. Type: {type(e)} Arguements:{e}")
+    gLogger.debug(f"Number of operations preformed: {numOperations}")
+    gLogger.info("Leaving...")
     return numOperations, watchLater
 
 def getVideoYT(youtube, videoID):
+    gLogger.info("Enter...")
+    videoErrorCount = 0
+    videoDetails = []
+    gLogger.debug("Initialized variables...", videoErrorCount=videoErrorCount)
+    gLogger.debug("Creating YT api video request...")
     vid_request = youtube.videos().list(
-        part="contentDetails, snippet",
+        part="contentDetails, snippet", # the snippet property contains the channelId, title, description, tags, and categoryId properties. TODO: Make use description, tags, and categoryId properties. Data Science?
         id = videoID,
     )
-    vid_response = vid_request.execute()
-    videoDetails = []
-    for vid in vid_response["items"]:
-        videoDetails = {
-            "duration" : vid["contentDetails"]["duration"],
-            "creator" :  vid["snippet"]["channelTitle"], 
-            "published" : vid["snippet"]["publishedAt"],
-            "title" : vid["snippet"]["title"]
-        }
+    gLogger.info("Executing youtube video request...")
+    try:
+        vid_response = vid_request.execute()
+    except Exception as e:
+        videoErrorCount += 1
+        if videoErrorCount > gNumStrikes:
+            gLogger.error(f"Error executing youtube video request. All Strikes Used. Type: {type(e)} Arguements:{e}")
+            raise RuntimeError(e) #TODO: Better handling. -Check Quota Limit -Strikes?
+        else:
+            gLogger.warning(f"Unexcepted issue executing youtube video request. Strike: {videoErrorCount} Type: {type(e)} Arguements:{e}")
+            pass
+    gLogger.debug("Unpacking video response. Creating Dictionary")
+    vid = vid_response["items"]
+    #Better way to do this. Pretty sure response is already dictionary. Just trim/order structure dict.
+    videoDetails = {
+        "duration" : vid["contentDetails"]["duration"],
+        "creator" :  vid["snippet"]["channelTitle"], 
+        "published" : vid["snippet"]["publishedAt"],
+        "title" : vid["snippet"]["title"]
+    }            
+    gLogger.info("Leaving...")
     return videoDetails
 
-def insertVideo2WatchLater(conn, youtube, playlistID, videoID):
-    watchLater = getWatchLaterDB(conn)
-    videoDetails = getVideoYT(youtube,videoID)
-    watchLater.append(len(watchLater), '', videoID, durationString2Sec(videoDetails["duration"]), videoDetails["creator"], dateString2EpochTime(videoDetails["published"]), videoDetails["title"])
-    sortedWatchLater = sortWatchLater(watchLater,)
-    updatePlaylist(youtube, playlistID, watchLater, sortedWatchLater)
-
-#Time Math
-def durationString2Sec(durationString, hours_pattern=re.compile(r'(\d+)H'), minutes_pattern=re.compile(r'(\d+)M'), seconds_pattern=re.compile(r'(\d+)S')):
-    hoursString = hours_pattern.search(durationString)
-    minutesString = minutes_pattern.search(durationString)
-    secondsString = seconds_pattern.search(durationString)
-
-    hours = int(hoursString.group(1)) if hoursString else 0
-    minutes = int(minutesString.group(1)) if minutesString else 0
-    seconds = int(secondsString.group(1)) if secondsString else 0
-
-    video_seconds = dt.timedelta(
-        hours=hours,
-        minutes=minutes,
-        seconds=seconds
-    ).total_seconds()
-    return video_seconds
-
-def dateString2EpochTime(dateString, time_pattern="%Y-%m-%dT%H:%M:%SZ"):
-    d = dt.datetime.strptime(dateString, time_pattern)
-    epoch = dt.datetime(1970,1,1)
-    return (d-epoch).total_seconds()
-
-def filterDict(dict, string, threshold): 
-    ops = {
-        "<" : operator.ge,
-        "<=" : operator.gt,
-        ">" : operator.le,
-        ">=" : operator.lt
-    }
-    tempDict = dict.copy()
-    for key, value in dict.items():
-        if ops[string](value,threshold):
-            del tempDict[key]
-    return tempDict
-
-def printMultiList(*args):
-    for list_ in args:
-        for element in list_:
-            print(element, end=' ')
-        print('\n')
+#def insertVideo2WatchLater(conn, youtube, playlistID, videoID):
+#    watchLater = getDataDB(conn, 'WatchLaterList ', ['*'])
+#    videoDetails = getVideoYT(youtube,videoID)
+#    watchLater.append(len(watchLater), '', videoID, durationString2Sec(videoDetails["duration"]), videoDetails["creator"], dateString2EpochTime(videoDetails["published"]), videoDetails["title"])
+#    sortedWatchLater = sortWatchLater(watchLater,)
+#    updatePlaylist(youtube, playlistID, watchLater, sortedWatchLater)
 
 #=========================================
 #         SORTING WATCHLATER
@@ -357,7 +508,7 @@ def sortSeriesVideos(watchLaterList):
 def sortWatchLater(watchLaterList, creatorDict, keywordDict, numSerKeywords, serKeywords, videoIDFollowUpList, sequentialCreators):
     #WatchLaterList structured as (position on yt, playlist id for yt, video id for yt, duration in seconds, creator, published time in unix time, video title)
     videoCountThreshold = 50 #Number of items in list to determine priority limit
-    durationThreshold = 41*60 #41 minutes in seconds / Wanted to include anything that is 40 minutes + change and under. Main goal is to stop super long content from choking up the priority queue.
+    durationThreshold = 61*60 #61 minutes in seconds / Wanted to include anything that is 60 minutes + change and under. Main goal is to stop super long content from choking up the priority queue.
     #How priority is defined
     if len(watchLaterList) > videoCountThreshold:
         priorityThreshold = 0
@@ -380,6 +531,7 @@ def sortWatchLater(watchLaterList, creatorDict, keywordDict, numSerKeywords, ser
     workingWatchLater.sort( key=lambda x: (x[3], x[5])) #Sort by duration then publish time
 
     #Step 3 - Merge sequential and series segments back together
+    #TODO - Break up this step
     for index, item in enumerate(workingWatchLater):
         #Merge in sequential videos
         if sequentialWatchLater and (sequentialWatchLater[0][3]  <= item[3]):
@@ -409,33 +561,58 @@ def renumberWatchLater(watchLater):
     for x in range(len(watchLater)):
         watchLater[x] = (x, watchLater[x][1], watchLater[x][2], watchLater[x][3], watchLater[x][4], watchLater[x][5], watchLater[x][6])
     return watchLater
+#=========================================
+#        Quality of Life
+#========================================= 
+def checkType(var, type):
+    gLogger.info("Entering 'checkType'...")
+    if not isinstance(var, type):
+        gLogger.error(f"{var} not of {type}!", variable=var, type=type)
+        raise TypeError(f"{var} not of type: {type}!")
+    gLogger.debug(f"{var} is of type {type}")
+    gLogger.info("Leaving 'checkType'...")
 
-#Quota Management
-def getQuotaAmount(connection, projectID):
-    datePatternString = "%Y-%m-%d"
-    cur = connection.cursor()
-    query = "SELECT MAX(date) FROM QuotaLimit Where(projectID= "+ str(projectID) + ")"
-    cur.execute(query)
-    for d_ in cur:
-        dbDate = d_[0].strftime(datePatternString)
-    if dt.datetime.now().strftime(datePatternString) == dbDate:
-        cur.execute(
-            "SELECT Amount FROM QuotaLimit Where Date = ? and projectID = ?" , (dbDate, projectID)
-        )
-        for amount in cur:
-            return amount[0], dbDate
-    else:
-        return 0, dbDate
+def getProjectVariables(file):
+    with open(file, 'r') as f:
+        projectVariables = yaml.safe_load(f)
+    return tuple(projectVariables.values())
 
-def saveQuota(connection, dateString, quota, projectID):
-    cur = connection.cursor()
-    todayDateString = dt.datetime.now().strftime("%Y-%m-%d")
-    if dateString != todayDateString:
-        cur.execute(
-            "INSERT INTO QuotaLimit(date, amount, projectID) VALUES (?,?,?)", (todayDateString, quota, projectID)
-        )
-    else:
-        cur.execute(
-            "UPDATE QuotaLimit SET Amount = ? WHERE Date = ? and projectID = ?", (quota, dateString, projectID)
-        )
-    connection.commit()
+def durationString2Sec(durationString, hours_pattern=re.compile(r'(\d+)H'), minutes_pattern=re.compile(r'(\d+)M'), seconds_pattern=re.compile(r'(\d+)S')):
+    hoursString = hours_pattern.search(durationString)
+    minutesString = minutes_pattern.search(durationString)
+    secondsString = seconds_pattern.search(durationString)
+
+    hours = int(hoursString.group(1)) if hoursString else 0
+    minutes = int(minutesString.group(1)) if minutesString else 0
+    seconds = int(secondsString.group(1)) if secondsString else 0
+
+    video_seconds = dt.timedelta(
+        hours=hours,
+        minutes=minutes,
+        seconds=seconds
+    ).total_seconds()
+    return video_seconds
+
+def dateString2EpochTime(dateString, time_pattern="%Y-%m-%dT%H:%M:%SZ"):
+    d = dt.datetime.strptime(dateString, time_pattern)
+    epoch = dt.datetime(1970,1,1)
+    return (d-epoch).total_seconds()
+
+def filterDict(dict, string, threshold): 
+    ops = {
+        "<" : operator.ge,
+        "<=" : operator.gt,
+        ">" : operator.le,
+        ">=" : operator.lt
+    }
+    tempDict = dict.copy()
+    for key, value in dict.items():
+        if ops[string](value,threshold):
+            del tempDict[key]
+    return tempDict
+
+def printMultiList(*args):
+    for list_ in args:
+        for element in list_:
+            print(element, end=' ')
+        print('\n')
