@@ -588,6 +588,7 @@ def getSerializedVideos(watchLaterList, numSerKeywords, serKeywords):
     return seriesList, nonSerialized
 
 def getSequentialVideos(watchLaterList, sequentialCreators):
+    #Explaination: Pull out videos from creators that reference previous videos. Since it just the order the creator uploaded them, published date can be used to sort.
     nonSequential = watchLaterList.copy() #creates copy to return non sequential videos as well
     seqSet = list(set(sequentialCreators)) #remove dups
     seqList = [[] for i in range(len(seqSet))] #create 2d array where each row is a different creator
