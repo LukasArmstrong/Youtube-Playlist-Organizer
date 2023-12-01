@@ -639,8 +639,7 @@ def sortWatchLater(watchLaterList, creatorDict, keywordDict, numSerKeywords, ser
     priorityWatchLater, workingWatchLater = getPriorityVideos(watchLaterList, creatorDict, keywordDict, priorityThreshold, durationThreshold)
     followUpWatchLater = getFollowUpVideos(workingWatchLater, videoIDFollowUpList)
     seriesWatchLater, workingWatchLater = getSerializedVideos(workingWatchLater, numSerKeywords, serKeywords)
-    sequentialWatchLater = getSequentialVideos(workingWatchLater, sequentialCreators)
-    workingWatchLater = [i for i in workingWatchLater if i not in sequentialWatchLater]
+    sequentialWatchLater, workingWatchLater = getSequentialVideos(workingWatchLater, sequentialCreators)
     
     #Step 2 - Sort segments
     sortedpriorityWatchLater = []
