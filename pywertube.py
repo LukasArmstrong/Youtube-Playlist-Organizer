@@ -16,6 +16,8 @@ import logging
 #==================================
 #            Variables
 #==================================
+global gNumStrikes
+global gLogger
 gNumStrikes = 3
 gLogger = None
 #==================================
@@ -98,7 +100,9 @@ def initLogger(file, debug=False, verbose=False):
 
 def setLogger(logger):
     logger.info("Enter...")
+    global gLogger
     gLogger = logger
+    gLogger.debug("Logger set!")
     gLogger.info("Leaving...")
 
 #==================================
