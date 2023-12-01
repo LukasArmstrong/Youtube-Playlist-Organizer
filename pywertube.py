@@ -653,12 +653,16 @@ def sortWatchLater(watchLaterList, creatorDict, keywordDict, numSerKeywords, ser
     #TODO - Break up this step
     for index, item in enumerate(workingWatchLater):
         #Merge in sequential videos
-        if sequentialWatchLater and (sequentialWatchLater[0][3]  <= item[3]):
-            workingWatchLater.insert(index, sequentialWatchLater[0])
-            sequentialWatchLater.pop(0)
+        for row in range(len(sequentialWatchLater)):
+            if sequentialWatchLater[row] and sequentialWatchLater[row][0][3] <= item[3] and sequentialWatchLater[row][0][4] != item[4]:
+                workingWatchLater.insert(index, sequentialWatchLater[row][0])
+                sequentialWatchLater[row].pop(0)
+        #if sequentialWatchLater and (sequentialWatchLater[0][3]  <= item[3]):
+        #    workingWatchLater.insert(index, sequentialWatchLater[0])
+        #    sequentialWatchLater.pop(0)
         #Merge in series videos
         for row in range(len(sortedSeriesWatchLater)):
-            if sortedSeriesWatchLater[row] and sortedSeriesWatchLater[row][0][3] <= item[3] and sortedSeriesWatchLater[row][0][3] != item[4]:
+            if sortedSeriesWatchLater[row] and sortedSeriesWatchLater[row][0][3] <= item[3] and sortedSeriesWatchLater[row][0][4] != item[4]:
                 workingWatchLater.insert(index, sortedSeriesWatchLater[row][0])
                 sortedSeriesWatchLater[row].pop(0)
 
