@@ -175,6 +175,8 @@ def storeWatchLaterDB(conn, watchlater):
     gLogger.info("WatchLaterList Cleared...")
     gLogger.info("Filling new list...")
     for video in watchlater:
+        videoList = list(video)
+        videoList[6] = sanitizeTitle(videoList[6])
         setDataDB(conn, 'WatchLaterList', ['position', 'playlistID', 'videoID', 'duration', 'creator', 'publishedTimeUTC', 'title'], list(video), 'ON DUPLICATE KEY UPDATE position=Value(position)')
     gLogger.info("Watch Later stored in database!")
         
@@ -616,3 +618,9 @@ def printMultiList(*args):
         for element in list_:
             print(element, end=' ')
         print('\n')
+
+def sanitizeTitle(string):
+    char2Remove = '",\''
+    for char in char2Remove:
+        string = string.replace(char,'')
+    return string
