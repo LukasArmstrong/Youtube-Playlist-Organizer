@@ -509,31 +509,53 @@ def getVideoYT(youtube, videoID):
 #         SORTING WATCHLATER
 #=========================================   
 def getPriorityVideos(watchLaterList, creatorDict, keywordDict, priorityThreshold, durationThreshold):
+    gLogger.debug("Entering...")
     nonPriority = watchLaterList.copy() #creates copy to return non priority videos as well
+    gLogger.info("Watch Later List copied!")
     creatorDict = filterDict(creatorDict, ">", priorityThreshold) #Filter dictionary for creators not considered priority. Priority changes with size of watchlater
     keywordDict = filterDict(keywordDict, ">", priorityThreshold) #Filter dictionary for Keywords not considered priority. Priority changes with size of watchlater
+    gLogger.info("Creator and Keyboard dictionaries filtered!")
+    gLogger.debug("Making set from Creator dictionary values...", creatorDictValues=creatorDict.values())
     setValues = set(list(creatorDict.values())) #remove duplicate priortity scores. Multiple creators are on the same tier of priority.
+    gLogger.debug("Adding Keyphrase dictionary values to set...", KeyphraseDictValues=keywordDict.values())
     setValues.update(list(keywordDict.values())) #add any unique priority score from keyphrase
+    gLogger.debug("Converting set to list and reverse sorting...")
     scoreSet = sorted(list(setValues), reverse=True) #sort priority scores from high to low
-    priorityWatchLater = [[] for i in range(len(scoreSet))]  #create 2d array where each row is a different creator priorirty score
+    gLogger.info("Priority Scores list created!")
+    gLogger.debug(f"Creating {len(scoreSet)} dimensional list (Size is determined by number of priority scores)...")
+    priorityWatchLater = [[] for i in range(len(scoreSet))]  #create 2d array where each row is a different creator priorirty score"
+    gLogger.debug("Looping over watch later list to find priority videos...")
     for item in watchLaterList:
+        #Check Keyword first because some creators have natural priority, but subset of videos from said creator have higher priority 
         keywordFound = False #init skip flag
         for word in keywordDict.keys():
             if word in item[6]:
                 if keywordDict[word] in scoreSet:
+                    gLogger.info(f"Found Video, {item[6]}, is priority with keyword {word}!")
+                    gLogger.debug("Finding priority score index of video...")
                     scoreIndex = scoreSet.index(keywordDict[word]) #find priority row index
+                    gLogger.debug("Appending priority video to priority list...")
                     priorityWatchLater[scoreIndex].append(item) #add video to priority row
+                    gLogger.debug("Removing priority video from orginal list...")
                     nonPriority.remove(item) #remove priority video from non-priority list
                     keywordFound = True #set skip flag
+                    gLogger.info(f"{item[6]} added to priority list and removed from original list due to keyword {word}!")
                     break
         if keywordFound:
+            gLogger.debug("Since Keyword found, skipping creator check...")
             continue #if keyphrase is found in item, don't care if creator of video is also priority. Skip over last section
         if item[4] in creatorDict.keys():
             if item[3]<(durationThreshold): #duration limit important because some priority creators live stream and release VOD later. Not currently interested in VOD
                 if creatorDict[item[4]] in scoreSet:
+                    gLogger.info(f"Found Video, {item[6]}, is priority with creator {item[4]}!")
+                    gLogger.debug("Finding priority score index of video...")
                     scoreIndex = scoreSet.index(creatorDict[item[4]]) #find priority row index
+                    gLogger.debug("Appending priority video to priority list...")
                     priorityWatchLater[scoreIndex].append(item) #add videot o priority row
+                    gLogger.debug("Removing priority video from orginal list...")
                     nonPriority.remove(item) #remove priority video from non-priority list
+                    gLogger.info(f"{item[6]} added to priority list and removed from original list due to creator {item[4]}!")
+    gLogger.debug("Returning to priority watch later and nonPriority list")
     return priorityWatchLater, nonPriority
 
 def getSerializedVideos(watchLaterList, numSerKeywords, serKeywords):
