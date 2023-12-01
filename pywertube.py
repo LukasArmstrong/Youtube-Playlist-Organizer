@@ -109,15 +109,15 @@ def setLogger(logger):
 #           SQL/MariaDB
 #==================================
 def getDataBaseConnection(usr, pswd, host, port, db):
-    gLogger.info("Entering 'GetDataBaseConnection...")
-    gLogger.info("Checking types...")
+    gLogger.info("Entering...")
+    gLogger.debug("Checking types...")
     checkType(usr, str)
     checkType(pswd, str)
     checkType(host, str)
     checkType(port, int)
     checkType(db, str)
     try:
-        gLogger.info("Attempting MariaDB connection")
+        gLogger.debug("Attempting MariaDB connection...")
         conn = mariadb.connect(
             user = usr,
             password = pswd,
@@ -125,27 +125,29 @@ def getDataBaseConnection(usr, pswd, host, port, db):
             port = port,
             database = db
         )
-        gLogger.info("Database Connection established!")
+        gLogger.debug("Database Connection established!")
     except mariadb.Error as e:
         gLogger.error(f"Error connecting to MariaDB Platform.  Type: {type(e)} Arguements:{e}", usr=usr, pswd=pswd, host=host, port=port, db=db)
         raise mariadb.Error(e)
+    gLogger.info("Leaving...")
     return conn
 
 def getDataDB(conn, tableString, cols, optionsString=""):
-    gLogger.info("Entering 'getDataDB'...")
-    gLogger.info("Checking types...")
+    gLogger.info("Entering...")
+    gLogger.debug("Checking types...")
     checkType(tableString, str)
     checkType(cols, list)
     cur = conn.cursor()
     gLogger.info("Get connection cursor obtained...")
     query = "Select " + " ,".join(cols) +" from " + tableString + " " + optionsString
     try:
-        gLogger.info("Attempting query...")
+        gLogger.debug("Attempting query...")
         cur.execute(query)
-        gLogger.info("Query Successful!")
+        gLogger.debug("Query Successful!")
     except mariadb.Error as e:
         gLogger.error(f"Error executing query {query}.  Type: {type(e)} Arguements:{e}", conn=conn, tableString=tableString, cols=cols)
         raise mariadb.Error(e)
+    gLogger.info("Leaving...")
     return cur.fetchall()
 
 def setDataDB(conn, tableString, cols_list, vals_list, optionsString=""):
