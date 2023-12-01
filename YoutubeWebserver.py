@@ -92,6 +92,6 @@ numberedSerializedKeywords = ['series', 'part', 'finale', 'episode', 'ep', 'smar
 serializedKeywords = ['finale']
 sequentialCreators = ['Wintergatan', 'LegalEagle','penguinz0', 'AntsCanada', 'Brozime']
 
-dbConnection = pt.getDataBaseConnection(user, password, serverIp, mariaPort, database, logger)
+dbConnection = pt.getDataBaseConnection(user, password, serverIp, mariaPort, database)
 
 app.run(host=hostIP, port=hostPort)
