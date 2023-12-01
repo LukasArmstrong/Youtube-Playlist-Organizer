@@ -7,7 +7,7 @@ from datetime import datetime as dt, timedelta
 from googleapiclient.discovery import build
 
 app = Flask(__name__)
-logger = pt.getLogger(__file__)
+logger = pt.initLogger(__file__, debug=True, verbose=False)
 dbConnection = None
 storedCreators = None
 
