@@ -588,7 +588,15 @@ def getSerializedVideos(watchLaterList, numSerKeywords, serKeywords):
     return seriesList, nonSerialized
 
 def getSequentialVideos(watchLaterList, sequentialCreators):
-    return [i for i in watchLaterList if i[4] in sequentialCreators]
+    nonSequential = watchLaterList.copy() #creates copy to return non sequential videos as well
+    seqSet = list(set(sequentialCreators)) #remove dups
+    seqList = [[] for i in range(len(seqSet))] #create 2d array where each row is a different creator
+    for video in watchLaterList:
+        if video[4] in sequentialCreators:
+            seqIndex = seqSet.index(video[4]) #postion in list determines row number
+            seqList[seqIndex].append(video) #place corresponding videos to creator row
+            nonSequential.remove(video) #remove serialized video from non-serialized list
+    return seqList, nonSequential
 
 def getFollowUpVideos(watchLaterList, FollowUpIDList):
     videos = [item for item in watchLaterList if item[2] in FollowUpIDList[1]]
