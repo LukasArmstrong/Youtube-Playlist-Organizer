@@ -624,7 +624,6 @@ def checkType(var, type):
     if not isinstance(var, type):
         gLogger.error(f"{var} not of {type}!", variable=var, type=type)
         raise TypeError(f"{var} not of type: {type}!")
-    gLogger.debug(f"{var} is of type {type}")
     gLogger.info("Leaving 'checkType'...")
 
 def getProjectVariables(file):
