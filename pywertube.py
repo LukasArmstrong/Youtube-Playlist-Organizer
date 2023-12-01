@@ -25,11 +25,11 @@ gLogger = None
 #==================================
 
 def initLogger(file, debug=False, verbose=False):
+    #Standard Pyton logging levels debug > Info > warning > error > critical
     if debug:
         if verbose:
             structlog.configure( 
-                processors=[ 
-                    structlog.contextvars.merge_contextvars,
+                processors=[
                     structlog.processors.TimeStamper(fmt="iso"),
                     structlog.stdlib.add_log_level,
                     structlog.processors.EventRenamer("msg"),
@@ -39,6 +39,7 @@ def initLogger(file, debug=False, verbose=False):
                         structlog.processors.CallsiteParameter.PROCESS,
                         structlog.processors.CallsiteParameter.THREAD]
                     ),
+                    structlog.contextvars.merge_contextvars,
                     structlog.processors.dict_tracebacks,
                     structlog.processors.JSONRenderer(),
                 ],
@@ -99,17 +100,17 @@ def initLogger(file, debug=False, verbose=False):
     return gLogger
 
 def setLogger(logger):
-    logger.info("Enter...")
+    logger.debug("Enter...")
     global gLogger
     gLogger = logger
-    gLogger.debug("Logger set!")
-    gLogger.info("Leaving...")
+    gLogger.info("Logger set!")
+    gLogger.debug("Leaving...")
 
 #==================================
 #           SQL/MariaDB
 #==================================
 def getDataBaseConnection(usr, pswd, host, port, db):
-    gLogger.info("Entering...")
+    gLogger.debug("Entering...")
     gLogger.debug("Checking types...")
     checkType(usr, str)
     checkType(pswd, str)
@@ -125,49 +126,49 @@ def getDataBaseConnection(usr, pswd, host, port, db):
             port = port,
             database = db
         )
-        gLogger.debug("Database Connection established!")
+        gLogger.info("Database Connection established!")
     except mariadb.Error as e:
         gLogger.error(f"Error connecting to MariaDB Platform.  Type: {type(e)} Arguements:{e}", usr=usr, pswd=pswd, host=host, port=port, db=db)
         raise mariadb.Error(e)
-    gLogger.info("Leaving...")
+    gLogger.debug("Leaving...")
     return conn
 
 def getDataDB(conn, tableString, cols, optionsString=""):
-    gLogger.info("Entering...")
+    gLogger.debug("Entering...")
     gLogger.debug("Checking types...")
     checkType(tableString, str)
     checkType(cols, list)
     cur = conn.cursor()
-    gLogger.info("Get connection cursor obtained...")
+    gLogger.debug("Get connection cursor obtained...")
     query = "Select " + " ,".join(cols) +" from " + tableString + " " + optionsString
     try:
         gLogger.debug("Attempting query...")
         cur.execute(query)
-        gLogger.debug("Query Successful!")
+        gLogger.info("Query Successful!")
     except mariadb.Error as e:
         gLogger.error(f"Error executing query {query}.  Type: {type(e)} Arguements:{e}", conn=conn, tableString=tableString, cols=cols)
         raise mariadb.Error(e)
-    gLogger.info("Leaving...")
+    gLogger.debug("Leaving...")
     return cur.fetchall()
 
 def setDataDB(conn, tableString, cols_list, vals_list, optionsString=""):
-    gLogger.info("Entering 'setDataDB'...")
-    gLogger.info("Checking Number of Columns = Number of values to assign...")
+    gLogger.debug("Entering...")
+    gLogger.debug("Checking Number of Columns = Number of values to assign...")
     if len(cols_list) != len(vals_list):
         gLogger.error("Lengths of Columns and Values differ!", DB_Connection = conn, Table = tableString, Columns = cols_list, Values = vals_list)
         raise ValueError("Lengths of Columns and Values differ!")
-    gLogger.info("Checking types...")
+    gLogger.debug("Checking types...")
     checkType(tableString, str)
     checkType(cols_list, list)
     checkType(vals_list, list)
     checkType(optionsString, str)
     cur = conn.cursor()
-    gLogger.info("Set connection cursor obtained...")
+    gLogger.info("Set connection cursor obtained!")
     query = f"Insert Into {tableString}{*cols_list,}"
     query = query.replace("'", "`")
     query += f" Values {*vals_list,} {optionsString}"
     try:
-        gLogger.info("Attempting query...")
+        gLogger.debug("Attempting query...")
         cur.execute(query)
         gLogger.info("Query Successful!")
         conn.commit()
@@ -175,24 +176,24 @@ def setDataDB(conn, tableString, cols_list, vals_list, optionsString=""):
     except mariadb.Error as e:
         gLogger.error(f"Error executing query {query}.  Type: {type(e)} Arguements:{e}", DB_Connection = conn, Table = tableString, Columns = cols_list, Values = vals_list)
         raise mariadb.Error(e)
-    gLogger.info(f"Data in {tableString} set!")
+    gLogger.debug(f"Leaving...")
 
 def updateDataDB(conn, tableString, cols_list, vals_list, optionsString=""):
-    gLogger.info("Entering 'updateDataDB'...")
-    gLogger.info("Checking Number of Columns = Number of values to assign...")
+    gLogger.debug("Entering...")
+    gLogger.debug("Checking Number of Columns = Number of values to assign...")
     if len(cols_list) != len(vals_list):
         gLogger.error("Lengths of Columns and Values differ!", DB_Connection = conn, Table = tableString, Columns = cols_list, Values = vals_list)
         raise ValueError("Lengths of Columns and Values differ!")
-    gLogger.info("Checking types...")
+    gLogger.debug("Checking types...")
     checkType(tableString, str)
     checkType(cols_list, list)
     checkType(vals_list, list)
     checkType(optionsString, str)
     cur = conn.cursor()
-    gLogger.info("Update connection cursor obtained...")
+    gLogger.info("Update connection cursor obtained!")
     query = f"Update {tableString} set { ', '.join(f'`{x}` = {str(vals_list[i])}' for i, x in enumerate(cols_list)) } {optionsString}"
     try:
-        gLogger.info("Attempting query...")
+        gLogger.debug("Attempting query...")
         cur.execute(query)
         gLogger.info("Query Successful!")
         conn.commit()
@@ -200,17 +201,17 @@ def updateDataDB(conn, tableString, cols_list, vals_list, optionsString=""):
     except mariadb.Error as e:
         gLogger.error(f"Error executing query {query}.  Type: {type(e)} Arguements:{e}", DB_Connection = conn, Table = tableString, Columns = cols_list, Values = vals_list)
         raise mariadb.Error(e)
-    gLogger.info(f"{tableString} updated!")
+    gLogger.debug(f"Leaving...")
 
 def clearTableDB(conn, tableString):
-    gLogger.info("Entering 'delDataDB'...")
-    gLogger.info("Checking types...")
+    gLogger.debug("Entering...")
+    gLogger.debug("Checking types...")
     checkType(tableString, str)
     cur = conn.cursor()
-    gLogger.info("Delete connection cursor obtained...")
+    gLogger.info("Delete connection cursor obtained!")
     query = f"Delete From {tableString}"
     try:
-        gLogger.info("Attempting query...")
+        gLogger.debug("Attempting query...")
         cur.execute(query)
         gLogger.info("Query Successful!")
         conn.commit()
@@ -218,48 +219,49 @@ def clearTableDB(conn, tableString):
     except mariadb.Error as e:
         gLogger.error(f"Error executing query {query}.  Type: {type(e)} Arguements:{e}", DB_Connection = conn, Table = tableString)
         raise mariadb.Error(e)
-    gLogger.info(f"{tableString} cleared!")
+    gLogger.debug(f"Leaving...")
 
 def storeWatchLaterDB(conn, watchlater):
-    gLogger.info("Entering 'storeWatchLaterDB'...")
-    gLogger.info("Checking types...")
+    gLogger.debug("Entering...")
+    gLogger.debug("Checking types...")
     checkType(watchlater, list)
     clearTableDB(conn, 'WatchLaterList')
-    gLogger.info("WatchLaterList Cleared...")
-    gLogger.info("Filling new list...")
+    gLogger.info("WatchLaterList Cleared!")
+    gLogger.debug("Filling new list...")
     for video in watchlater:
         videoList = list(video)
         videoList[6] = sanitizeTitle(videoList[6])
         setDataDB(conn, 'WatchLaterList', ['position', 'playlistID', 'videoID', 'duration', 'creator', 'publishedTimeUTC', 'title'], list(video), 'ON DUPLICATE KEY UPDATE position=Value(position)')
     gLogger.info("Watch Later stored in database!")
+    gLogger.debug(f"Leaving...")
         
 
 #==================================
 #    Qouta Controller Functions
 #==================================
 def getQuotaUsed(connection, projectID):
-    gLogger.info("Entering 'getQuotaUsed'...")
+    gLogger.debug("Entering...")
     optionString = "Where(projectID= "+ str(projectID) + ")"
-    gLogger.debug(f"Where statement: {optionString}")
-    gLogger.info("Getting Latest date...")
+    gLogger.info(f"Where statement: {optionString}")
+    gLogger.debug("Getting Latest date...")
     dbDate = getDataDB(connection, 'QuotaLimit', ['MAX(date)'], optionString)
-    gLogger.info("Latest date obtained...")
-    gLogger.info("Perfroming logic if date is today or not...")
+    gLogger.info("Latest date obtained!")
+    gLogger.debug("Perfroming logic if date is today or not...")
     if dt.datetime.today() == dbDate:
-        gLogger.info("Date is today...")
+        gLogger.debug("Date is today...")
         optionString= f"Where Date = {dbDate} and projectID = {projectID}"
-        gLogger.debug(f"Where statement: {optionString}")
-        gLogger.info("Getting used quota...")
+        gLogger.info(f"Where statement: {optionString}")
+        gLogger.debug("Getting used quota...")
         amount = getDataDB(connection,'QuotaLimit', ['Amount'], optionString)
-        gLogger.info("Returning used quota and date...")
+        gLogger.debug("Returning used quota and date...")
         return amount, True
     else:
-        gLogger.info("Date is not today...")
+        gLogger.debug("Date is not today...")
         gLogger.info("Reseting quota...")
         return 0, False
 
 def setQuotaUsed(connection, inDB, quota, projectID):
-    gLogger.info("Entering 'setQuotaUsed'...")
+    gLogger.debug("Entering...")
     if not inDB:
         gLogger.info("Creating new quota record...")
         setDataDB(connection, 'QuotaLimit', ['date', 'amount', 'projectID'], [dt.date.today().strftime("%Y/%m/%d"), quota, projectID])
@@ -268,34 +270,34 @@ def setQuotaUsed(connection, inDB, quota, projectID):
         optionsString = f"Where Date = {dt.date.today()} and projectID = {projectID}"
         updateDataDB(connection, 'QuotaLimit', ['Amount'], [quota], optionsString)
     gLogger.info("Quota Set!")
+    gLogger.debug("Leaving...")
         
 #==================================
 #          Youtube API
 #==================================
 def getCredentials(portNumber, clientSecretFile):
-    gLogger.info("Entering 'getCredentials'...")
+    gLogger.debug("Entering...")
     credentials =  None
     # token.pickle stores the user's credentials from previously successful logins
-    gLogger.info("Checking if token pickle exist...")
+    gLogger.debug("Checking if token pickle exist...")
     if os.path.exists("token.pickle"):
-        gLogger.info("Loading credentials token from file...")
+        gLogger.debug("Loading credentials token from file...")
         with open("token.pickle", "rb") as token:
             credentials = pickle.load(token)
         gLogger.info("credentials token loaded")
     #If there is no valid credentials available, then either refresh the token or log in.
-    gLogger.info("Checking if credential token is valid...")
+    gLogger.debug("Checking if credential token is valid...")
     if not credentials or not credentials.valid:
         gLogger.info("Credential token not valid. Checking if expired...")
         if credentials and credentials.expired and credentials.refresh_token:
             gLogger.info("Credential token expired and can be refreshed...")
-            gLogger.info("Refreshing access token...")
+            gLogger.debug("Refreshing access token...")
             credentials.refresh(Request())
-            gLogger.info("Token refreshed...")
-            gLogger.info("Saving new token...")
+            gLogger.info("Token refreshed!")
             saveCredentails(credentials)
         else:
             gLogger.info("Credential token expired and can _not_ be refreshed...")
-            gLogger.info("Fetching new token...")
+            gLogger.debug("Fetching new token...")
             flow = getFlowObject(clientSecretFile)
             gLogger.info("Flow server created. Running...")
             flow.run_local_server(
@@ -303,15 +305,16 @@ def getCredentials(portNumber, clientSecretFile):
                 prompt="consent", 
                 authorization_prompt_message=""
             )
-            gLogger.info("Obtaining credential token...")
+            gLogger.debug("Obtaining credential token...")
             credentials = flow.credentials
-            gLogger.info("Credential token obtained. Saving...")
+            gLogger.info("Credential token obtained!")
             saveCredentails(credentials)
-    gLogger.info("Returning credentials")
+    gLogger.debug("Returning credentials...")
     return credentials
 
 def getFlowObject(clientSecretFile):
-    gLogger.info("Creating Flow object...")
+    gLogger.debug("Enter...")
+    gLogger.debug("Creating Flow object...")
     return InstalledAppFlow.from_client_secrets_file(
         clientSecretFile,
         scopes=["https://www.googleapis.com/auth/youtube",
@@ -320,23 +323,24 @@ def getFlowObject(clientSecretFile):
     )
 
 def saveCredentails(credentials):
-    gLogger.info("Entering 'saveCredentials'...")
+    gLogger.debug("Entering...")
     # Save credentials for the next run
     with open("token.pickle", "wb") as f:
-        gLogger.info("Saving credentials for future use...")
+        gLogger.debug("Saving credentials for future use...")
         pickle.dump(credentials, f)
     gLogger.info("Credentails Saved!")
+    gLogger.debug("Leaving...")
 
 def getWatchLater(youtube, playlistID, nextPageBoolean):
-    gLogger.info("Entering 'getWatchLater'...")
-    gLogger.info("Initalizing variables...")
+    gLogger.debug("Entering...")
+    gLogger.debug("Initalizing variables...")
     nextPageToken = None
     numberRequest = 0
     watchLaterList = []
-    gLogger.info("Getting List...")
+    gLogger.debug("Getting List...")
     while True:
         #Watch Later isn't available through the API, so have to use playlist as pseudo watch later list
-        gLogger.info("Creating youtube playlist request...")
+        gLogger.debug("Creating youtube playlist request...")
         pl_request = youtube.playlistItems().list(
             part="contentDetails, snippet",
             playlistId=playlistID,
@@ -344,25 +348,27 @@ def getWatchLater(youtube, playlistID, nextPageBoolean):
             pageToken = nextPageToken
         )
         try:
-            gLogger.info("Executing youtube playlist request...")
+            gLogger.debug("Executing youtube playlist request...")
             pl_response = pl_request.execute()
+            gLogger.info("Playlist request executed!")
         except Exception as e:
             gLogger.error(f"Error executing youtube playlist request. Type: {type(e)} Arguements:{e}")
             raise RuntimeError(e)
         numberRequest += 1 #Tracking quota usage
-        gLogger.info("Unpacking youtube playlist response...")
+        gLogger.debug("Unpacking youtube playlist response...")
         videoErrorCount = 0            
         for item in pl_response["items"]:
             video = (item["snippet"]["position"], item["id"], item["contentDetails"]["videoId"]) #tuple of position in watch later, playlist ID, and video ID
             #Need more data to sort
-            gLogger.info("Creating youtube video request...")
+            gLogger.debug("Creating youtube video request...")
             vid_request = youtube.videos().list(
                 part="contentDetails, snippet", # the snippet property contains the channelId, title, description, tags, and categoryId properties. TODO: Make use description, tags, and categoryId properties. Data Science?
                 id = item["contentDetails"]["videoId"],
             )
-            gLogger.info("Executing youtube video request...")
+            gLogger.debug("Executing youtube video request...")
             try:
                 vid_response = vid_request.execute()
+                gLogger.info("Video request executed!")
             except Exception as e:
                 videoErrorCount += 1
                 if videoErrorCount > gNumStrikes:
@@ -372,32 +378,32 @@ def getWatchLater(youtube, playlistID, nextPageBoolean):
                     gLogger.warning(f"Unexcepted issue executing youtube video request. Strike: {videoErrorCount} Type: {type(e)} Arguements:{e}")
                     pass
             numberRequest += 1 #Tracking quota usage
-            gLogger.info("Unpacking youtube video response...")
+            gLogger.debug("Unpacking youtube video response...")
             for vid in vid_response["items"]:
-                gLogger.info("Converting video duration to more useful format...")
+                gLogger.debug("Converting video duration to more useful format...")
                 duration = durationString2Sec(vid["contentDetails"]["duration"])
-                gLogger.info("Converting video published date to more useful format...")
+                gLogger.debug("Converting video published date to more useful format...")
                 utcPublishedTime =  dateString2EpochTime(vid["snippet"]["publishedAt"])
-                gLogger.info("Storing video data...")
+                gLogger.Info("Video duration and publish time converted! Storing in tuple...")
                 videoSnippet = (duration, vid["snippet"]["channelTitle"], utcPublishedTime, vid["snippet"]["title"])
-            gLogger.info("Combining video tuples...")
+            gLogger.debug("Combining video tuples...")
             video = video + videoSnippet
             gLogger.info("Adding video tuple to watch later list...")
             watchLaterList.append(video)
-        gLogger.info("Checking if should get next page...")
+        gLogger.debug("Checking if should get next page...")
         if nextPageBoolean:
-            gLogger.info("Getting next page token...")    
+            gLogger.debug("Getting next page token...")    
             nextPageToken = pl_response.get('nextPageToken')
 
-        gLogger.info("Checking if next page token exist...")
+        gLogger.debug("Checking if next page token exist...")
         if not nextPageToken:
             gLogger.info("Next page token doesn't exist, breaking out of loop...")
             break
-    gLogger.info("Returning watch later list and number of requests")
+    gLogger.debug("Returning watch later list and number of requests...")
     return watchLaterList, numberRequest
         
 def updatePlaylist(watchLater, sortedWatchLater, youtube, playlistID):
-    gLogger.info("Entering...")
+    gLogger.debug("Entering...")
     gLogger.debug("Checking types...")
     checkType(watchLater, list)
     checkType(sortedWatchLater, list)
@@ -433,7 +439,7 @@ def updatePlaylist(watchLater, sortedWatchLater, youtube, playlistID):
             gLogger.debug("Attempting to execute update request...")
             try:
                 update_response = update_request.execute()
-                gLogger.debug("Execution Successful!")
+                gLogger.info("Execution Successful!")
                 try:
                     gLogger.debug("incrementing num of operations...")
                     numOperations += 1
@@ -450,12 +456,12 @@ def updatePlaylist(watchLater, sortedWatchLater, youtube, playlistID):
                     gLogger.warning(f"Unexcepted issue executing youtube update request. Strike: {videoErrorCount} Type: {type(e)} Arguements:{e}")
                     pass
                 gLogger.error(f"Couldn't update {x[6]}. Type: {type(e)} Arguements:{e}")
-    gLogger.debug(f"Number of operations preformed: {numOperations}")
-    gLogger.info("Leaving...")
+    gLogger.info(f"Number of operations preformed: {numOperations}")
+    gLogger.debug("Leaving...")
     return numOperations, watchLater
 
 def getVideoYT(youtube, videoID):
-    gLogger.info("Enter...")
+    gLogger.debug("Enter...")
     videoErrorCount = 0
     videoDetails = []
     gLogger.debug("Initialized variables...", videoErrorCount=videoErrorCount)
@@ -464,9 +470,10 @@ def getVideoYT(youtube, videoID):
         part="contentDetails, snippet", # the snippet property contains the channelId, title, description, tags, and categoryId properties. TODO: Make use description, tags, and categoryId properties. Data Science?
         id = videoID,
     )
-    gLogger.info("Executing youtube video request...")
+    gLogger.debug("Attempting youtube video request...")
     try:
         vid_response = vid_request.execute()
+        gLogger.debug("Youtube Video Request executed successfully!")
     except Exception as e:
         videoErrorCount += 1
         if videoErrorCount > gNumStrikes:
@@ -475,16 +482,20 @@ def getVideoYT(youtube, videoID):
         else:
             gLogger.warning(f"Unexcepted issue executing youtube video request. Strike: {videoErrorCount} Type: {type(e)} Arguements:{e}")
             pass
-    gLogger.debug("Unpacking video response. Creating Dictionary")
+    gLogger.debug("Unpacking video response... Creating Dictionary...")
     vid = vid_response["items"]
     #Better way to do this. Pretty sure response is already dictionary. Just trim/order structure dict.
     videoDetails = {
         "duration" : vid["contentDetails"]["duration"],
         "creator" :  vid["snippet"]["channelTitle"], 
         "published" : vid["snippet"]["publishedAt"],
-        "title" : vid["snippet"]["title"]
+        "title" : vid["snippet"]["title"],
+        "description" : vid["snippet"]["description"],
+        "tags" : vid["snippet"]["tag"],
+        "categoryIDs": vid["snippet"]["categoryId properties"]
     }            
-    gLogger.info("Leaving...")
+    gLogger.info("Video Dictonary Created!")
+    gLogger.debug("Leaving...")
     return videoDetails
 
 #def insertVideo2WatchLater(conn, youtube, playlistID, videoID):
