@@ -555,21 +555,34 @@ def getPriorityVideos(watchLaterList, creatorDict, keywordDict, priorityThreshol
                     gLogger.debug("Removing priority video from orginal list...")
                     nonPriority.remove(item) #remove priority video from non-priority list
                     gLogger.info(f"{item[6]} added to priority list and removed from original list due to creator {item[4]}!")
-    gLogger.debug("Returning to priority watch later and nonPriority list")
+    gLogger.debug("Returning to priority watch later and non-priority list")
     return priorityWatchLater, nonPriority
 
 def getSerializedVideos(watchLaterList, numSerKeywords, serKeywords):
+    gLogger.debug("Entering...")
     nonSerialized = watchLaterList.copy() #creates copy to return non serialized videos as well
+    gLogger.info("Watch Later List copied!")
     seriesPattern = re.compile(r"(%s)\s\d+" % "|".join(numSerKeywords) + "|(%s)" % "|".join(serKeywords), re.IGNORECASE) #create complicated regex pattern to find serialized videos through keywords
+    gLogger.info("Regular Expression created to find Serialized Videos")
+    gLogger.debug("Creating creator list...")
     creators = [i[4] for i in watchLaterList] #pull out creators from given list
+    gLogger.debug("Removing dupes from creator list...")
     creatorsSet = list(set(creators)) #remove dups
+    gLogger.info("Creator List Created!")
+    gLogger.debug(f"Creating {len(creatorsSet)} dimensional list (Size is determined by number of creators in watch later)...")
     seriesList = [[] for i in range(len(creatorsSet))] #create 2d array where each row is a different creator
+    gLogger.debug("Looping over watch later list to find serialized videos...")
     for item in watchLaterList:
         result = seriesPattern.search(item[6]) #check if pattern in video title
         if result:
+            gLogger.info(f"Result found! {result} in {item[6]}!")
+            gLogger.debug("Finding creator index of video...")
             scoreIndex = creatorsSet.index(item[4]) #postion in list determines row number
+            gLogger.debug("Appending serialized video to creator sub-list...")
             seriesList[scoreIndex].append(item) #place corresponding videos to creator row
+            gLogger.debug("Removing serialized video from orginal list...")
             nonSerialized.remove(item) #remove serialized video from non-serialized list
+    gLogger.debug("Returning to serialized watch later and non-serialized list")
     return seriesList, nonSerialized
 
 def getSequentialVideos(watchLaterList, sequentialCreators):
