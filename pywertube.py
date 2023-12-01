@@ -559,6 +559,8 @@ def getPriorityVideos(watchLaterList, creatorDict, keywordDict, priorityThreshol
     return priorityWatchLater, nonPriority
 
 def getSerializedVideos(watchLaterList, numSerKeywords, serKeywords):
+    #Explaination: Pull out a video that is apart of a series. Videos apart of a series, store in list that all from same creator. 
+    #       Typically creators are more likely to name the episodes in a series similarly. Making it easier on natural sort to do it's job later.
     gLogger.debug("Entering...")
     nonSerialized = watchLaterList.copy() #creates copy to return non serialized videos as well
     gLogger.info("Watch Later List copied!")
