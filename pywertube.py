@@ -588,6 +588,7 @@ def getSerializedVideos(watchLaterList, numSerKeywords, serKeywords):
     return seriesList, nonSerialized
 
 def getSequentialVideos(watchLaterList, sequentialCreators,durationThreshold):
+    #TODO: Instead of durationThreshold as filter, use blacklist. 
     #Explaination: Pull out videos from creators that reference previous videos. Since it just the order the creator uploaded them, published date can be used to sort.
     gLogger.debug("Entering...")
     nonSequential = watchLaterList.copy() #creates copy to return non sequential videos as well
