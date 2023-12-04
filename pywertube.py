@@ -647,24 +647,24 @@ def sortWatchLater(watchLaterList, creatorDict, keywordDict, numSerKeywords, ser
     priorityWatchLater, workingWatchLater = getPriorityVideos(watchLaterList, creatorDict, keywordDict, priorityThreshold, durationThreshold)
     followUpWatchLater = getFollowUpVideos(workingWatchLater, videoIDFollowUpList)
     seriesWatchLater, workingWatchLater = getSerializedVideos(workingWatchLater, numSerKeywords, serKeywords)
-    sequentialWatchLater, workingWatchLater = getSequentialVideos(workingWatchLater, sequentialCreators)
+    sequentialWatchLater, workingWatchLater = getSequentialVideos(workingWatchLater, sequentialCreators, durationThreshold)
     
     #Step 2 - Sort segments
     sortedpriorityWatchLater = []
     for i in range(len(priorityWatchLater)): #Sort by priortity then publish time
         sortedpriorityWatchLater += sorted(priorityWatchLater[i], key=lambda x: x[5]) #Creates 1D list where priority is maintaied and videos are sorted by publish time within a priority group
     sortedSeriesWatchLater = sortSeriesVideos(seriesWatchLater)
-    sequentialWatchLater.sort(key=lambda x: x[5]) #Sort by publish time
+    sortedSequentialWatchLater = sortSequentialVideo(sequentialWatchLater)
     workingWatchLater.sort( key=lambda x: (x[3], x[5])) #Sort by duration then publish time
 
     #Step 3 - Merge sequential and series segments back together
     #TODO - Break up this step
     for index, item in enumerate(workingWatchLater):
         #Merge in sequential videos
-        for row in range(len(sequentialWatchLater)):
-            if sequentialWatchLater[row] and sequentialWatchLater[row][0][3] <= item[3] and sequentialWatchLater[row][0][4] != item[4]:
-                workingWatchLater.insert(index, sequentialWatchLater[row][0])
-                sequentialWatchLater[row].pop(0)
+        for row in range(len(sortedSequentialWatchLater)):
+            if sortedSequentialWatchLater[row] and sortedSequentialWatchLater[row][0][3] <= item[3] and sortedSequentialWatchLater[row][0][4] != item[4]:
+                workingWatchLater.insert(index, sortedSequentialWatchLater[row][0])
+                sortedSequentialWatchLater[row].pop(0)
         #if sequentialWatchLater and (sequentialWatchLater[0][3]  <= item[3]):
         #    workingWatchLater.insert(index, sequentialWatchLater[0])
         #    sequentialWatchLater.pop(0)
