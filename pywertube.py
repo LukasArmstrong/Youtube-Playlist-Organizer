@@ -96,14 +96,14 @@ def initLogger(file, debug=False, verbose=False):
         )
     global gLogger
     gLogger = structlog.get_logger()
-    gLogger.info("Logger Created!")
+    gLogger.debug("Logger Created!")
     return gLogger
 
 def setLogger(logger):
     logger.debug("Enter...")
     global gLogger
     gLogger = logger
-    gLogger.info("Logger set!")
+    gLogger.debug("Logger set!")
     gLogger.debug("Leaving...")
 
 #==================================
@@ -126,7 +126,7 @@ def getDataBaseConnection(usr, pswd, host, port, db):
             port = port,
             database = db
         )
-        gLogger.info("Database Connection established!")
+        gLogger.debug("Database Connection established!")
     except mariadb.Error as e:
         gLogger.error(f"Error connecting to MariaDB Platform.  Type: {type(e)} Arguements:{e}", usr=usr, pswd=pswd, host=host, port=port, db=db)
         raise mariadb.Error(e)
@@ -144,7 +144,7 @@ def getDataDB(conn, tableString, cols, optionsString=""):
     try:
         gLogger.debug("Attempting query...")
         cur.execute(query)
-        gLogger.info("Query Successful!")
+        gLogger.debug("Query Successful!")
     except mariadb.Error as e:
         gLogger.error(f"Error executing query {query}.  Type: {type(e)} Arguements:{e}", conn=conn, tableString=tableString, cols=cols)
         raise mariadb.Error(e)
@@ -163,16 +163,16 @@ def setDataDB(conn, tableString, cols_list, vals_list, optionsString=""):
     checkType(vals_list, list)
     checkType(optionsString, str)
     cur = conn.cursor()
-    gLogger.info("Set connection cursor obtained!")
+    gLogger.debug("Set connection cursor obtained!")
     query = f"Insert Into {tableString}{*cols_list,}"
     query = query.replace("'", "`")
     query += f" Values {*vals_list,} {optionsString}"
     try:
         gLogger.debug("Attempting query...")
         cur.execute(query)
-        gLogger.info("Query Successful!")
+        gLogger.debug("Query Successful!")
         conn.commit()
-        gLogger.info("Query Committed!")
+        gLogger.debug("Query Committed!")
     except mariadb.Error as e:
         gLogger.error(f"Error executing query {query}.  Type: {type(e)} Arguements:{e}", DB_Connection = conn, Table = tableString, Columns = cols_list, Values = vals_list)
         raise mariadb.Error(e)
@@ -190,14 +190,14 @@ def updateDataDB(conn, tableString, cols_list, vals_list, optionsString=""):
     checkType(vals_list, list)
     checkType(optionsString, str)
     cur = conn.cursor()
-    gLogger.info("Update connection cursor obtained!")
+    gLogger.debug("Update connection cursor obtained!")
     query = f"Update {tableString} set { ', '.join(f'`{x}` = {str(vals_list[i])}' for i, x in enumerate(cols_list)) } {optionsString}"
     try:
         gLogger.debug("Attempting query...")
         cur.execute(query)
-        gLogger.info("Query Successful!")
+        gLogger.debug("Query Successful!")
         conn.commit()
-        gLogger.info("Query Committed!")
+        gLogger.debug("Query Committed!")
     except mariadb.Error as e:
         gLogger.error(f"Error executing query {query}.  Type: {type(e)} Arguements:{e}", DB_Connection = conn, Table = tableString, Columns = cols_list, Values = vals_list)
         raise mariadb.Error(e)
@@ -208,14 +208,14 @@ def clearTableDB(conn, tableString):
     gLogger.debug("Checking types...")
     checkType(tableString, str)
     cur = conn.cursor()
-    gLogger.info("Delete connection cursor obtained!")
+    gLogger.debug("Delete connection cursor obtained!")
     query = f"Delete From {tableString}"
     try:
         gLogger.debug("Attempting query...")
         cur.execute(query)
-        gLogger.info("Query Successful!")
+        gLogger.debug("Query Successful!")
         conn.commit()
-        gLogger.info("Query Committed!")
+        gLogger.debug("Query Committed!")
     except mariadb.Error as e:
         gLogger.error(f"Error executing query {query}.  Type: {type(e)} Arguements:{e}", DB_Connection = conn, Table = tableString)
         raise mariadb.Error(e)
@@ -226,13 +226,13 @@ def storeWatchLaterDB(conn, watchlater):
     gLogger.debug("Checking types...")
     checkType(watchlater, list)
     clearTableDB(conn, 'WatchLaterList')
-    gLogger.info("WatchLaterList Cleared!")
+    gLogger.debug("WatchLaterList Cleared!")
     gLogger.debug("Filling new list...")
     for video in watchlater:
         videoList = list(video)
         videoList[6] = sanitizeTitle(videoList[6])
         setDataDB(conn, 'WatchLaterList', ['position', 'playlistID', 'videoID', 'duration', 'creator', 'publishedTimeUTC', 'title'], list(video), 'ON DUPLICATE KEY UPDATE position=Value(position)')
-    gLogger.info("Watch Later stored in database!")
+    gLogger.debug("Watch Later stored in database!")
     gLogger.debug(f"Leaving...")
         
 
@@ -242,34 +242,34 @@ def storeWatchLaterDB(conn, watchlater):
 def getQuotaUsed(connection, projectID):
     gLogger.debug("Entering...")
     optionString = "Where(projectID= "+ str(projectID) + ")"
-    gLogger.info(f"Where statement: {optionString}")
+    gLogger.debug(f"Where statement: {optionString}")
     gLogger.debug("Getting Latest date...")
     dbDate = getDataDB(connection, 'QuotaLimit', ['MAX(date)'], optionString)
-    gLogger.info("Latest date obtained!")
+    gLogger.debug("Latest date obtained!")
     gLogger.debug("Perfroming logic if date is today or not...")
     if dt.datetime.today() == dbDate:
         gLogger.debug("Date is today...")
         optionString= f"Where Date = {dbDate} and projectID = {projectID}"
-        gLogger.info(f"Where statement: {optionString}")
+        gLogger.debug(f"Where statement: {optionString}")
         gLogger.debug("Getting used quota...")
         amount = getDataDB(connection,'QuotaLimit', ['Amount'], optionString)
         gLogger.debug("Returning used quota and date...")
         return amount, True
     else:
         gLogger.debug("Date is not today...")
-        gLogger.info("Reseting quota...")
+        gLogger.debug("Reseting quota...")
         return 0, False
 
 def setQuotaUsed(connection, inDB, quota, projectID):
     gLogger.debug("Entering...")
     if not inDB:
-        gLogger.info("Creating new quota record...")
+        gLogger.debug("Creating new quota record...")
         setDataDB(connection, 'QuotaLimit', ['date', 'amount', 'projectID'], [dt.date.today().strftime("%Y/%m/%d"), quota, projectID])
     else:
-        gLogger.info("Updating quota record...")
+        gLogger.debug("Updating quota record...")
         optionsString = f"Where Date = {dt.date.today()} and projectID = {projectID}"
         updateDataDB(connection, 'QuotaLimit', ['Amount'], [quota], optionsString)
-    gLogger.info("Quota Set!")
+    gLogger.debug("Quota Set!")
     gLogger.debug("Leaving...")
         
 #==================================
@@ -284,22 +284,22 @@ def getCredentials(portNumber, clientSecretFile):
         gLogger.debug("Loading credentials token from file...")
         with open("token.pickle", "rb") as token:
             credentials = pickle.load(token)
-        gLogger.info("credentials token loaded")
+        gLogger.debug("credentials token loaded")
     #If there is no valid credentials available, then either refresh the token or log in.
     gLogger.debug("Checking if credential token is valid...")
     if not credentials or not credentials.valid:
-        gLogger.info("Credential token not valid. Checking if expired...")
+        gLogger.debug("Credential token not valid. Checking if expired...")
         if credentials and credentials.expired and credentials.refresh_token:
-            gLogger.info("Credential token expired and can be refreshed...")
+            gLogger.debug("Credential token expired and can be refreshed...")
             gLogger.debug("Refreshing access token...")
             credentials.refresh(Request())
-            gLogger.info("Token refreshed!")
+            gLogger.debug("Token refreshed!")
             saveCredentails(credentials)
         else:
-            gLogger.info("Credential token expired and can _not_ be refreshed...")
+            gLogger.debug("Credential token expired and can _not_ be refreshed...")
             gLogger.debug("Fetching new token...")
             flow = getFlowObject(clientSecretFile)
-            gLogger.info("Flow server created. Running...")
+            gLogger.debug("Flow server created. Running...")
             flow.run_local_server(
                 port=portNumber, 
                 prompt="consent", 
@@ -307,7 +307,7 @@ def getCredentials(portNumber, clientSecretFile):
             )
             gLogger.debug("Obtaining credential token...")
             credentials = flow.credentials
-            gLogger.info("Credential token obtained!")
+            gLogger.debug("Credential token obtained!")
             saveCredentails(credentials)
     gLogger.debug("Returning credentials...")
     return credentials
@@ -328,7 +328,7 @@ def saveCredentails(credentials):
     with open("token.pickle", "wb") as f:
         gLogger.debug("Saving credentials for future use...")
         pickle.dump(credentials, f)
-    gLogger.info("Credentails Saved!")
+    gLogger.debug("Credentails Saved!")
     gLogger.debug("Leaving...")
 
 def getWatchLater(youtube, playlistID, nextPageBoolean):
@@ -350,7 +350,7 @@ def getWatchLater(youtube, playlistID, nextPageBoolean):
         try:
             gLogger.debug("Executing youtube playlist request...")
             pl_response = pl_request.execute()
-            gLogger.info("Playlist request executed!")
+            gLogger.debug("Playlist request executed!")
         except Exception as e:
             gLogger.error(f"Error executing youtube playlist request. Type: {type(e)} Arguements:{e}")
             raise RuntimeError(e)
@@ -368,7 +368,7 @@ def getWatchLater(youtube, playlistID, nextPageBoolean):
             gLogger.debug("Executing youtube video request...")
             try:
                 vid_response = vid_request.execute()
-                gLogger.info("Video request executed!")
+                gLogger.debug("Video request executed!")
             except Exception as e:
                 videoErrorCount += 1
                 if videoErrorCount > gNumStrikes:
@@ -384,11 +384,11 @@ def getWatchLater(youtube, playlistID, nextPageBoolean):
                 duration = durationString2Sec(vid["contentDetails"]["duration"])
                 gLogger.debug("Converting video published date to more useful format...")
                 utcPublishedTime =  dateString2EpochTime(vid["snippet"]["publishedAt"])
-                gLogger.info("Video duration and publish time converted! Storing in tuple...")
+                gLogger.debug("Video duration and publish time converted! Storing in tuple...")
                 videoSnippet = (duration, vid["snippet"]["channelTitle"], utcPublishedTime, vid["snippet"]["title"])
             gLogger.debug("Combining video tuples...")
             video = video + videoSnippet
-            gLogger.info("Adding video tuple to watch later list...")
+            gLogger.debug("Adding video tuple to watch later list...")
             watchLaterList.append(video)
         gLogger.debug("Checking if should get next page...")
         if nextPageBoolean:
@@ -397,7 +397,7 @@ def getWatchLater(youtube, playlistID, nextPageBoolean):
 
         gLogger.debug("Checking if next page token exist...")
         if not nextPageToken:
-            gLogger.info("Next page token doesn't exist, breaking out of loop...")
+            gLogger.debug("Next page token doesn't exist, breaking out of loop...")
             break
     gLogger.debug("Returning watch later list and number of requests...")
     return watchLaterList, numberRequest
@@ -439,7 +439,7 @@ def updatePlaylist(watchLater, sortedWatchLater, youtube, playlistID):
             gLogger.debug("Attempting to execute update request...")
             try:
                 update_response = update_request.execute()
-                gLogger.info("Execution Successful!")
+                gLogger.debug("Execution Successful!")
                 try:
                     gLogger.debug("incrementing num of operations...")
                     numOperations += 1
@@ -456,7 +456,7 @@ def updatePlaylist(watchLater, sortedWatchLater, youtube, playlistID):
                     gLogger.warning(f"Unexcepted issue executing youtube update request. Strike: {videoErrorCount} Type: {type(e)} Arguements:{e}")
                     pass
                 gLogger.error(f"Couldn't update {x[6]}. Type: {type(e)} Arguements:{e}")
-    gLogger.info(f"Number of operations preformed: {numOperations}")
+    gLogger.debug(f"Number of operations preformed: {numOperations}")
     gLogger.debug("Leaving...")
     return numOperations, watchLater
 
@@ -494,7 +494,7 @@ def getVideoYT(youtube, videoID):
         "tags" : vid["snippet"]["tag"],
         "categoryIDs": vid["snippet"]["categoryId properties"]
     }            
-    gLogger.info("Video Dictonary Created!")
+    gLogger.debug("Video Dictonary Created!")
     gLogger.debug("Leaving...")
     return videoDetails
 
@@ -511,17 +511,17 @@ def getVideoYT(youtube, videoID):
 def getPriorityVideos(watchLaterList, creatorDict, keywordDict, priorityThreshold, durationThreshold):
     gLogger.debug("Entering...")
     nonPriority = watchLaterList.copy() #creates copy to return non priority videos as well
-    gLogger.info("Watch Later List copied!")
+    gLogger.debug("Watch Later List copied!")
     creatorDict = filterDict(creatorDict, ">", priorityThreshold) #Filter dictionary for creators not considered priority. Priority changes with size of watchlater
     keywordDict = filterDict(keywordDict, ">", priorityThreshold) #Filter dictionary for Keywords not considered priority. Priority changes with size of watchlater
-    gLogger.info("Creator and Keyboard dictionaries filtered!")
+    gLogger.debug("Creator and Keyboard dictionaries filtered!")
     gLogger.debug("Making set from Creator dictionary values...", creatorDictValues=creatorDict.values())
     setValues = set(list(creatorDict.values())) #remove duplicate priortity scores. Multiple creators are on the same tier of priority.
     gLogger.debug("Adding Keyphrase dictionary values to set...", KeyphraseDictValues=keywordDict.values())
     setValues.update(list(keywordDict.values())) #add any unique priority score from keyphrase
     gLogger.debug("Converting set to list and reverse sorting...")
     scoreSet = sorted(list(setValues), reverse=True) #sort priority scores from high to low
-    gLogger.info("Priority Scores list created!")
+    gLogger.debug("Priority Scores list created!")
     gLogger.debug(f"Creating {len(scoreSet)} dimensional list (Size is determined by number of priority scores)...")
     priorityWatchLater = [[] for i in range(len(scoreSet))]  #create 2d array where each row is a different creator priorirty score"
     gLogger.debug("Looping over watch later list to find priority videos...")
@@ -531,7 +531,7 @@ def getPriorityVideos(watchLaterList, creatorDict, keywordDict, priorityThreshol
         for word in keywordDict.keys():
             if word in item[6]:
                 if keywordDict[word] in scoreSet:
-                    gLogger.info(f"Found Video, {item[6]}, is priority with keyword {word}!")
+                    gLogger.debug(f"Found Video, {item[6]}, is priority with keyword {word}!")
                     gLogger.debug("Finding priority score index of video...")
                     scoreIndex = scoreSet.index(keywordDict[word]) #find priority row index
                     gLogger.debug("Appending priority video to priority list...")
@@ -539,7 +539,7 @@ def getPriorityVideos(watchLaterList, creatorDict, keywordDict, priorityThreshol
                     gLogger.debug("Removing priority video from orginal list...")
                     nonPriority.remove(item) #remove priority video from non-priority list
                     keywordFound = True #set skip flag
-                    gLogger.info(f"{item[6]} added to priority list and removed from original list due to keyword {word}!")
+                    gLogger.debug(f"{item[6]} added to priority list and removed from original list due to keyword {word}!")
                     break
         if keywordFound:
             gLogger.debug("Since Keyword found, skipping creator check...")
@@ -547,14 +547,14 @@ def getPriorityVideos(watchLaterList, creatorDict, keywordDict, priorityThreshol
         if item[4] in creatorDict.keys():
             if item[3]<(durationThreshold): #duration limit important because some priority creators live stream and release VOD later. Not currently interested in VOD
                 if creatorDict[item[4]] in scoreSet:
-                    gLogger.info(f"Found Video, {item[6]}, is priority with creator {item[4]}!")
+                    gLogger.debug(f"Found Video, {item[6]}, is priority with creator {item[4]}!")
                     gLogger.debug("Finding priority score index of video...")
                     scoreIndex = scoreSet.index(creatorDict[item[4]]) #find priority row index
                     gLogger.debug("Appending priority video to priority list...")
                     priorityWatchLater[scoreIndex].append(item) #add videot o priority row
                     gLogger.debug("Removing priority video from orginal list...")
                     nonPriority.remove(item) #remove priority video from non-priority list
-                    gLogger.info(f"{item[6]} added to priority list and removed from original list due to creator {item[4]}!")
+                    gLogger.debug(f"{item[6]} added to priority list and removed from original list due to creator {item[4]}!")
     gLogger.debug("Returning to priority watch later and non-priority list")
     return priorityWatchLater, nonPriority
 
@@ -563,21 +563,21 @@ def getSerializedVideos(watchLaterList, numSerKeywords, serKeywords):
     #       Typically creators are more likely to name the episodes in a series similarly. Making it easier on natural sort to do it's job later.
     gLogger.debug("Entering...")
     nonSerialized = watchLaterList.copy() #creates copy to return non serialized videos as well
-    gLogger.info("Watch Later List copied!")
+    gLogger.debug("Watch Later List copied!")
     seriesPattern = re.compile(r"(%s)\s\d+" % "|".join(numSerKeywords) + "|(%s)" % "|".join(serKeywords), re.IGNORECASE) #create complicated regex pattern to find serialized videos through keywords
-    gLogger.info("Regular Expression created to find Serialized Videos")
+    gLogger.debug("Regular Expression created to find Serialized Videos")
     gLogger.debug("Creating creator list...")
     creators = [i[4] for i in watchLaterList] #pull out creators from given list
     gLogger.debug("Removing dupes from creator list...")
     creatorsSet = list(set(creators)) #remove dups
-    gLogger.info("Creator List Created!")
+    gLogger.debug("Creator List Created!")
     gLogger.debug(f"Creating {len(creatorsSet)} dimensional list (Size is determined by number of creators in watch later)...")
     seriesList = [[] for i in range(len(creatorsSet))] #create 2d array where each row is a different creator
     gLogger.debug("Looping over watch later list to find serialized videos...")
     for item in watchLaterList:
         result = seriesPattern.search(item[6]) #check if pattern in video title
         if result:
-            gLogger.info(f"Result found! {result} in {item[6]}!")
+            gLogger.debug(f"Result found! {result} in {item[6]}!")
             gLogger.debug("Finding creator index of video...")
             scoreIndex = creatorsSet.index(item[4]) #postion in list determines row number
             gLogger.debug("Appending serialized video to creator sub-list...")
@@ -592,13 +592,13 @@ def getSequentialVideos(watchLaterList, sequentialCreators,durationThreshold):
     #Explaination: Pull out videos from creators that reference previous videos. Since it just the order the creator uploaded them, published date can be used to sort.
     gLogger.debug("Entering...")
     nonSequential = watchLaterList.copy() #creates copy to return non sequential videos as well
-    gLogger.info("Watch Later List copied!")
+    gLogger.debug("Watch Later List copied!")
     gLogger.debug(f"Creating {len(sequentialCreators)} dimensional list (Size is determined by number of creators in sequential)...")
     seqList = [[] for i in range(len(sequentialCreators))] #create 2d array where each row is a different creator
     gLogger.debug("Looping over watch later list to find serialized videos...")
     for video in watchLaterList:
         if video[4] in sequentialCreators and video[3] < durationThreshold:
-            gLogger.info(f"Result found! {video[6]} by {video[4]}!")
+            gLogger.debug(f"Result found! {video[6]} by {video[4]}!")
             gLogger.debug("Finding creator index of video...")
             seqIndex = sequentialCreators.index(video[4]) #postion in list determines row number
             gLogger.debug("Appending sequential video to creator sub-list...")
