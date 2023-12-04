@@ -622,9 +622,16 @@ def getFollowUpVideos(watchLaterList, FollowUpIDList):
     return FollowUpWatchLater
 
 def sortSeriesVideos(watchLaterList):
-    for row in watchLaterList:
-        row = natsorted(row, key=lambda x: x[6]) #since each creator has own method for ordering videos, natsort each creator individually
-    return watchLaterList
+    copyList = [[] for i in range(len(watchLaterList))]
+    for index, row in enumerate(watchLaterList):
+        copyList[index] = natsorted(row, key=lambda x: x[6]) #since each creator has own method for ordering videos, natsort each creator individually
+    return copyList
+
+def sortSequentialVideo(watchLaterList):
+    copyList = [[] for i in range(len(watchLaterList))]
+    for index, row in enumerate(watchLaterList):
+        copyList[index] = sorted(row, key=lambda x: x[5]) #since each creator has own method for ordering videos, natsort each creator individually
+    return copyList
 
 def sortWatchLater(watchLaterList, creatorDict, keywordDict, numSerKeywords, serKeywords, videoIDFollowUpList, sequentialCreators):
     #WatchLaterList structured as (position on yt, playlist id for yt, video id for yt, duration in seconds, creator, published time in unix time, video title)
