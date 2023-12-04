@@ -730,10 +730,6 @@ def sortWatchLater(watchLaterList, creatorDict, keywordDict, numSerKeywords, ser
     gLogger.debug("returning combination of sorted Priority and working watch later")
     return sortedpriorityWatchLater + workingWatchLater
 
-def renumberWatchLater(watchLater):
-    for x in range(len(watchLater)):
-        watchLater[x] = (x, watchLater[x][1], watchLater[x][2], watchLater[x][3], watchLater[x][4], watchLater[x][5], watchLater[x][6])
-    return watchLater
 #=========================================
 #        Quality of Life
 #========================================= 
@@ -743,6 +739,11 @@ def checkType(var, type):
         gLogger.error(f"{var} not of {type}!", variable=var, type=type)
         raise TypeError(f"{var} not of type: {type}!")
     gLogger.debug("Leaving 'checkType'...")
+
+def renumberWatchLater(watchLater):
+    for x in range(len(watchLater)):
+        watchLater[x] = (x, watchLater[x][1], watchLater[x][2], watchLater[x][3], watchLater[x][4], watchLater[x][5], watchLater[x][6])
+    return watchLater
 
 def getProjectVariables(file):
     with open(file, 'r') as f:
