@@ -43,24 +43,39 @@ def sort():
         sortLog.info("Entering GET Request")
         try:
             dbConnection = pt.getDataBaseConnection(user, password, serverIp, mariaPort, database)
+            sortLog.info("DataBase Connection made!")
             Data = pt.getDataDB(dbConnection, "Creators", ["creators", "priorityScore"])
+            sortLog.info("Creators and their Priority Score obtained!")
             creatorDictionary = dict(Data)
+            sortLog.debug("Dictionary made from creator and priority score")
             Data = pt.getDataDB(dbConnection, "Keyphrases", ["phrase", "score"])
+            sortLog.info("Keyphrase and their Priority Score obtained!")
             keywordDictionary = dict(Data)
+            sortLog.debug("Dictionary made from keyphrase and priority score")
             Data = pt.getDataDB(dbConnection, "OrderVideos", ["id", "videoID", "predecentVideoID"])
+            sortLog.info("Follow up video data obtained!")
             videoFollowUpList = list(map(list, zip(*Data)))
+            sortLog.debug("List made from video follow up data")
             quota, inDB = pt.getQuotaUsed(dbConnection,projectID)
+            sortLog.info(f"Used Quota obtained! So far incurred: {quota}")
             try:
                 activeCredentials = pt.getCredentials(portNumber, clientSecretFile)
+                sortLog.info("Credentials obtained!")
                 youtube = build("youtube", "v3", credentials=activeCredentials)
+                sortLog.info("Youtube object built!")
                 youtubeWatchLater, requestOps = pt.getWatchLater(youtube, playlistID, True)
+                sortLog.info(f"Youtube Watchlater Obtained! Quota incurred: {requestOps}")
                 quota += requestOps
+                sortLog.info(f"Youtube Watchlater Obtained! Quota incurred: {requestOps}, Total: {quota}")
                 try: 
                     sortedWatchLater = pt.sortWatchLater(youtubeWatchLater, creatorDictionary, keywordDictionary, numberedSerializedKeywords, serializedKeywords, videoFollowUpList, sequentialCreators)
+                    sortLog.info("Watchlater sorted!")
                     try:
                         videoOps, youtubeWatchLater = pt.updatePlaylist(youtubeWatchLater, sortedWatchLater, youtube, playlistID)
-                        youtubeWatchLater = pt.renumberWatchLater(youtubeWatchLater)
                         quota += videoOps*50
+                        sortLog.info(f"Watchlater updated on youtube! Quota incurred: {videoOps*50}, Total: {quota}")
+                        youtubeWatchLater = pt.renumberWatchLater(youtubeWatchLater)
+                        sortLog.debug("Watchlater renumbered for DB storage!")
                     except Exception:
                         msg = "Error updating yt watch later"
                 except Exception:
@@ -70,9 +85,10 @@ def sort():
         except Exception:
             msg =  "Error getting data from DB"
         try:
-            pt.storeWatchLaterDB(dbConnection, sortedWatchLater)
-            print("Quota cost incurred: " + str(quota))
+            pt.storeWatchLaterDB(dbConnection, youtubeWatchLater)
+            sortLog.info("Watchlater stored in DB for stats!")
             pt.setQuotaUsed(dbConnection, inDB, quota, 1)
+            sortLog.info(f"Used Quota set! Total accrude: {quota}")
             dbConnection.close()
             sortLog.info(f"Database connection closed!")
             msg = "Sorted!"
