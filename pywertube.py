@@ -32,7 +32,6 @@ def initLogger(file, debug=False, verbose=False):
                 processors=[
                     structlog.processors.TimeStamper(fmt="iso"),
                     structlog.stdlib.add_log_level,
-                    structlog.processors.EventRenamer("msg"),
                     structlog.processors.CallsiteParameterAdder(
                         [structlog.processors.CallsiteParameter.FUNC_NAME,
                         structlog.processors.CallsiteParameter.LINENO,
@@ -53,7 +52,6 @@ def initLogger(file, debug=False, verbose=False):
                     structlog.contextvars.merge_contextvars,
                     structlog.processors.TimeStamper(fmt="iso"),
                     structlog.stdlib.add_log_level,
-                    structlog.processors.EventRenamer("msg"),
                     structlog.processors.CallsiteParameterAdder(
                         [structlog.processors.CallsiteParameter.FUNC_NAME,
                         structlog.processors.CallsiteParameter.LINENO,
