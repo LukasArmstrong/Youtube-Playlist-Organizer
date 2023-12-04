@@ -647,57 +647,87 @@ def sortSequentialVideo(watchLaterList):
 
 def sortWatchLater(watchLaterList, creatorDict, keywordDict, numSerKeywords, serKeywords, videoIDFollowUpList, sequentialCreators):
     #WatchLaterList structured as (position on yt, playlist id for yt, video id for yt, duration in seconds, creator, published time in unix time, video title)
+    gLogger.debug("Entering...")
+    gLogger.debug("Initalizing variables...")
     videoCountThreshold = 50 #Number of items in list to determine priority limit
     durationThreshold = 61*60 #61 minutes in seconds / Wanted to include anything that is 60 minutes + change and under. Main goal is to stop super long content from choking up the priority queue.
+    sortedpriorityWatchLater = [] 
+    
+    gLogger.debug("Determining priority threshold")
     #How priority is defined
     if len(watchLaterList) > videoCountThreshold:
         priorityThreshold = 0
+        gLogger.debug("Watch later is long! No threshold set")
     else:
         priorityThreshold = 1
+        gLogger.debug("Watch later is short! Threshold set")
 
     #Step 1 - Get sublists
+    gLogger.debug("Getting sub list (Priority, Follow-up, Series, and Sequential)...")
+    gLogger.debug("Getting Priority list...")
     priorityWatchLater, workingWatchLater = getPriorityVideos(watchLaterList, creatorDict, keywordDict, priorityThreshold, durationThreshold)
+    gLogger.debug("Priority list obtained! Getting Follow-up list...")
     followUpWatchLater = getFollowUpVideos(workingWatchLater, videoIDFollowUpList)
+    gLogger.debug("Follow-up list obtained! Getting Serialized list...")
     seriesWatchLater, workingWatchLater = getSerializedVideos(workingWatchLater, numSerKeywords, serKeywords)
+    gLogger.debug("Serialized list obtained! Getting Sequential list...")
     sequentialWatchLater, workingWatchLater = getSequentialVideos(workingWatchLater, sequentialCreators, durationThreshold)
-    
+    gLogger.debug("Sequential list obtained! Moving to sorting...")
+
     #Step 2 - Sort segments
-    sortedpriorityWatchLater = []
+    gLogger.debug("Sorting Priority list...")
     for i in range(len(priorityWatchLater)): #Sort by priortity then publish time
         sortedpriorityWatchLater += sorted(priorityWatchLater[i], key=lambda x: x[5]) #Creates 1D list where priority is maintaied and videos are sorted by publish time within a priority group
+    gLogger.debug("Priority list sorted! Sorting Series list...")
     sortedSeriesWatchLater = sortSeriesVideos(seriesWatchLater)
+    gLogger.debug("Series list sorted! Sorting Sequential list...")
     sortedSequentialWatchLater = sortSequentialVideo(sequentialWatchLater)
+    gLogger.debug("Sequential list sorted! Sorting rest of watch later list...")
     workingWatchLater.sort( key=lambda x: (x[3], x[5])) #Sort by duration then publish time
+    gLogger.debug("Rest of Watch Later list sorted!")
 
     #Step 3 - Merge sequential and series segments back together
     #TODO - Break up this step
+    gLogger.debug("Entering loop to merging Series and Sequential lists together...")
     for index, item in enumerate(workingWatchLater):
         #Merge in sequential videos
+        gLogger.debug("Looping over Sequential list...")
         for row in range(len(sortedSequentialWatchLater)):
+            gLogger.debug("Checking if parent video duration is less than current item duration and they they are not same...")
             if sortedSequentialWatchLater[row] and sortedSequentialWatchLater[row][0][3] <= item[3] and sortedSequentialWatchLater[row][0][4] != item[4]:
+                gLogger.debug("It is! Reordering video...")
                 workingWatchLater.insert(index, sortedSequentialWatchLater[row][0])
+                gLogger.debug("Removing parent from Sequential list...")
                 sortedSequentialWatchLater[row].pop(0)
-        #if sequentialWatchLater and (sequentialWatchLater[0][3]  <= item[3]):
-        #    workingWatchLater.insert(index, sequentialWatchLater[0])
-        #    sequentialWatchLater.pop(0)
-        #Merge in series videos
+
+        gLogger.debug("Looping over Series list...")        
         for row in range(len(sortedSeriesWatchLater)):
+            gLogger.debug("Checking if series video duration is less than current item duration and they they are not same...")
             if sortedSeriesWatchLater[row] and sortedSeriesWatchLater[row][0][3] <= item[3] and sortedSeriesWatchLater[row][0][4] != item[4]:
+                gLogger.debug("It is! Reordering video...")
                 workingWatchLater.insert(index, sortedSeriesWatchLater[row][0])
+                gLogger.debug("Removing parent from Sequential list...")
                 sortedSeriesWatchLater[row].pop(0)
 
     #Step 4 - Reorder follow up videos
+    gLogger.debug("Entering loop to reorder follow-up videos in watch later list...")
     for row in followUpWatchLater:
+        gLogger.debug("Determining position movement...")
+        if len(row)>3:
+            positionMovement = 2
+        else:
+            positionMovement = 1
+        gLogger.debug("Looping over each follow-up collection...")
         for i in range(len(row)-1):
+            gLogger.debug(f"Getting index of {i} video in collection...")
             predecentVideoPosition = workingWatchLater.index(row[i])
-            if len(row)>3:
-                positionMovement = 2
-            else:
-                positionMovement = 1
+            gLogger.debug(f"Removing {i+1} video in collection from watch later list...")            
             workingWatchLater.remove(row[i+1])
+            gLogger.debug(f"Inserting {i+1} video in collection...")
             workingWatchLater.insert(predecentVideoPosition+positionMovement, row[i+1])
 
     #Step 5 - Combine priority and non-priority watch later
+    gLogger.debug("returning combination of sorted Priority and working watch later")
     return sortedpriorityWatchLater + workingWatchLater
 
 def renumberWatchLater(watchLater):
