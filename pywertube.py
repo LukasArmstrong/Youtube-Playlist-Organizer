@@ -41,9 +41,9 @@ def initLogger(file, debug=False, verbose=False):
                     ),
                     structlog.contextvars.merge_contextvars,
                     structlog.processors.dict_tracebacks,
-                    structlog.processors.JSONRenderer(),
+                    structlog.dev.ConsoleRenderer(),
                 ],
-                wrapper_class=structlog.make_filtering_bound_logger(logging.INFO), 
+                wrapper_class=structlog.make_filtering_bound_logger(logging.DEBUG), 
                 context_class=dict, 
                 cache_logger_on_first_use=True
             )
@@ -61,9 +61,9 @@ def initLogger(file, debug=False, verbose=False):
                         structlog.processors.CallsiteParameter.THREAD]
                     ),
                     structlog.processors.dict_tracebacks,
-                    structlog.processors.JSONRenderer(),
+                    structlog.dev.ConsoleRenderer(),
                 ],
-                wrapper_class=structlog.make_filtering_bound_logger(logging.DEBUG), 
+                wrapper_class=structlog.make_filtering_bound_logger(logging.INFO), 
                 context_class=dict, 
                 cache_logger_on_first_use=True
             )
@@ -384,7 +384,7 @@ def getWatchLater(youtube, playlistID, nextPageBoolean):
                 duration = durationString2Sec(vid["contentDetails"]["duration"])
                 gLogger.debug("Converting video published date to more useful format...")
                 utcPublishedTime =  dateString2EpochTime(vid["snippet"]["publishedAt"])
-                gLogger.Info("Video duration and publish time converted! Storing in tuple...")
+                gLogger.info("Video duration and publish time converted! Storing in tuple...")
                 videoSnippet = (duration, vid["snippet"]["channelTitle"], utcPublishedTime, vid["snippet"]["title"])
             gLogger.debug("Combining video tuples...")
             video = video + videoSnippet
@@ -688,11 +688,11 @@ def renumberWatchLater(watchLater):
 #        Quality of Life
 #========================================= 
 def checkType(var, type):
-    gLogger.info("Entering 'checkType'...")
+    gLogger.debug("Entering 'checkType'...")
     if not isinstance(var, type):
         gLogger.error(f"{var} not of {type}!", variable=var, type=type)
         raise TypeError(f"{var} not of type: {type}!")
-    gLogger.info("Leaving 'checkType'...")
+    gLogger.debug("Leaving 'checkType'...")
 
 def getProjectVariables(file):
     with open(file, 'r') as f:
