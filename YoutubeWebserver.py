@@ -36,6 +36,7 @@ def sort():
     #    request_id=str(uuid.uuid4()),
     #    peer=request.access_route[0],
     #)
+    msg = ""
     sortLog = logger.bind()
     pt.setLogger(sortLog)
     if request.method == 'GET':
@@ -61,21 +62,25 @@ def sort():
                         youtubeWatchLater = pt.renumberWatchLater(youtubeWatchLater)
                         quota += videoOps*50
                     except Exception:
-                        return "Error updating yt watch later"
+                        msg = "Error updating yt watch later"
                 except Exception:
-                    return "Error sorting Watch Later"
+                    msg = "Error sorting Watch Later"
             except Exception:
-                return "Error getting yt credentials or watchlater list"
+                msg = "Error getting yt credentials or watchlater list"
         except Exception:
-            return "Error getting data from DB"
+            msg =  "Error getting data from DB"
         try:
             pt.storeWatchLaterDB(dbConnection, sortedWatchLater)
             print("Quota cost incurred: " + str(quota))
             pt.setQuotaUsed(dbConnection, inDB, quota, 1)
             dbConnection.close()
+            sortLog.info(f"Database connection closed!")
+            msg = "Sorted!"
         except Exception:
-            return "Error setting data in DB"
-        return 'Sorted!'
+            if msg != "":
+                msg += " & "
+            msg += "Error setting data in DB"
+        return msg
 @app.route('/renew', methods=['GET'])  
 def reNewToken():
     if request.method == 'GET':
