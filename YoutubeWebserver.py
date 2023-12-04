@@ -39,6 +39,7 @@ def sort():
     msg = ""
     sortLog = logger.bind()
     pt.setLogger(sortLog)
+    sortLog.info("sortLogger set as logger!")
     if request.method == 'GET':
         sortLog.info("Entering GET Request")
         try:
