@@ -587,7 +587,7 @@ def getSerializedVideos(watchLaterList, numSerKeywords, serKeywords):
     gLogger.debug("Returning to serialized watch later and non-serialized list")
     return seriesList, nonSerialized
 
-def getSequentialVideos(watchLaterList, sequentialCreators):
+def getSequentialVideos(watchLaterList, sequentialCreators,durationThreshold):
     #Explaination: Pull out videos from creators that reference previous videos. Since it just the order the creator uploaded them, published date can be used to sort.
     gLogger.debug("Entering...")
     nonSequential = watchLaterList.copy() #creates copy to return non sequential videos as well
@@ -596,7 +596,7 @@ def getSequentialVideos(watchLaterList, sequentialCreators):
     seqList = [[] for i in range(len(sequentialCreators))] #create 2d array where each row is a different creator
     gLogger.debug("Looping over watch later list to find serialized videos...")
     for video in watchLaterList:
-        if video[4] in sequentialCreators:
+        if video[4] in sequentialCreators and video[3] < durationThreshold:
             gLogger.info(f"Result found! {video[6]} by {video[4]}!")
             gLogger.debug("Finding creator index of video...")
             seqIndex = sequentialCreators.index(video[4]) #postion in list determines row number
