@@ -607,26 +607,42 @@ def getSequentialVideos(watchLaterList, sequentialCreators,durationThreshold):
     return seqList, nonSequential
 
 def getFollowUpVideos(watchLaterList, FollowUpIDList):
-    videos = [item for item in watchLaterList if item[2] in FollowUpIDList[1]]
-    ids = [v for i, v in enumerate(FollowUpIDList[0]) if FollowUpIDList[2][i] is None]
-    nullCount = FollowUpIDList[2].count(None)
-    FollowUpWatchLater = [[] for i in range(nullCount)]
+    gLogger.debug("Entering...")
+    gLogger.debug("Pulling out videos records from watcherlater if in Follow up list...")
+    videos = [item for item in watchLaterList if item[2] in FollowUpIDList[1]] #get all videos records that match on in follow up
+    gLogger.debug("Pulling out parent videos from follow up list...")
+    ids = [v for i, v in enumerate(FollowUpIDList[0]) if FollowUpIDList[2][i] is None] #find all parent videos
+    nullCount = FollowUpIDList[2].count(None) #get the number of parent videos
+    FollowUpWatchLater = [[] for i in range(nullCount)] #create 2d array where each row is collection of follow up videos
+    gLogger.debug("Entering loop to order follow up...")
     for index, id in enumerate(FollowUpIDList[2]):
-        if id is None: 
+        if id is None: #If parent ID
+            gLogger.debug("Getting ID of Parent video...")
             idIndex = ids.index(FollowUpIDList[0][index])
         else:
+            gLogger.debug("Getting ID of Child video...")
             idIndex = ids.index(id)
+        gLogger.debug("Ordering follow up video...")
         FollowUpWatchLater[idIndex].append(videos[index])
+    gLogger.debug("Returning follow up watch later...")
     return FollowUpWatchLater
 
 def sortSeriesVideos(watchLaterList):
+    gLogger.debug("Entering...")
+    gLogger.debug("Looping over series list...")
     for index in range(len(watchLaterList)):
+        gLogger.debug("Natural sorting series sub list...")
         watchLaterList[index] = natsorted(watchLaterList[index], key=lambda x: x[6]) #since each creator has own method for ordering videos, natsort each creator individually
+    gLogger.debug("Returning sorted series list...")
     return watchLaterList
 
 def sortSequentialVideo(watchLaterList):
+    gLogger.debug("Entering...")
+    gLogger.debug("Looping over sequential list...")
     for index in range(len(watchLaterList)):
+        gLogger.debug("Sorting sequential sub list...")
         watchLaterList[index] = sorted(watchLaterList[index], key=lambda x: x[5]) #since each creator has own method for ordering videos, natsort each creator individually
+    gLogger.debug("Returning sorted sequential list...")
     return watchLaterList
 
 def sortWatchLater(watchLaterList, creatorDict, keywordDict, numSerKeywords, serKeywords, videoIDFollowUpList, sequentialCreators):
