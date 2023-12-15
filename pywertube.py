@@ -804,17 +804,31 @@ def dateString2EpochTime(dateString, time_pattern="%Y-%m-%dT%H:%M:%SZ"):
     gLogger.debug("Returning seconds from start of epoch...")
     return (d-epoch).total_seconds()
 
-def filterDict(dict, string, threshold): 
+def filterDict(_dict, string, threshold): 
+    gLogger.debug("Entering...")
+    gLogger.debug("Checking Types...")
+    checkType(_dict, dict)
+    checkType(string, str)
+    checkType(threshold, int)
+
+    gLogger.debug("Definig operator dictionary...")
     ops = {
         "<" : operator.ge,
         "<=" : operator.gt,
         ">" : operator.le,
         ">=" : operator.lt
     }
-    tempDict = dict.copy()
-    for key, value in dict.items():
+
+    gLogger.debug("Creating copy of dictionary...")
+    tempDict = _dict.copy()
+
+    gLogger.debug("Looping over dictionary items...")
+    for key, value in _dict.items():
         if ops[string](value,threshold):
+            gLogger.debug(f"Deleting pair: ({key},{value}")
             del tempDict[key]
+    
+    gLogger.debug("Returning filtered dictionary...")
     return tempDict
 
 def printMultiList(*args):
