@@ -759,19 +759,31 @@ def getProjectVariables(file):
     return tuple(projectVariables.values())
 
 def durationString2Sec(durationString, hours_pattern=re.compile(r'(\d+)H'), minutes_pattern=re.compile(r'(\d+)M'), seconds_pattern=re.compile(r'(\d+)S')):
+    gLogger.debug("Entering...")
+
+    gLogger.debug("Checking time patterns...")
+    checkType(hours_pattern, re.Pattern)
+    checkType(minutes_pattern, re.Pattern)
+    checkType(seconds_pattern, re.Pattern)
+
+    gLogger.debug("Searching durationString for time patterns...")
     hoursString = hours_pattern.search(durationString)
     minutesString = minutes_pattern.search(durationString)
     secondsString = seconds_pattern.search(durationString)
 
+    gLogger.debug("Converting time string to int...")
     hours = int(hoursString.group(1)) if hoursString else 0
     minutes = int(minutesString.group(1)) if minutesString else 0
     seconds = int(secondsString.group(1)) if secondsString else 0
 
+    gLogger.debug("Coverting ints to time object...")
     video_seconds = dt.timedelta(
         hours=hours,
         minutes=minutes,
         seconds=seconds
     ).total_seconds()
+
+    gLogger.debug("Returning time object...")
     return video_seconds
 
 def dateString2EpochTime(dateString, time_pattern="%Y-%m-%dT%H:%M:%SZ"):
