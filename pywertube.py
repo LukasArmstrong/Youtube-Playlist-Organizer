@@ -832,7 +832,17 @@ def filterDict(_dict, string, threshold):
     return tempDict
 
 def sanitizeTitle(string):
+    gLogger.debug("Entering...")
+
+    gLogger.debug("Checking Type...")
+    checkType(string, str)
+
+    gLogger.debug("Getting characters to remove...")
     char2Remove = '",\',?'
+
+    gLogger.debug("Looping over characters...")
     for char in char2Remove:
         string = string.replace(char,'')
+    
+    gLogger.debug("Returning sanitized string...")
     return string
