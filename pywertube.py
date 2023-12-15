@@ -790,8 +790,18 @@ def durationString2Sec(durationString, hours_pattern=re.compile(r'(\d+)H'), minu
     return video_seconds
 
 def dateString2EpochTime(dateString, time_pattern="%Y-%m-%dT%H:%M:%SZ"):
+    gLogger.debug("Entering...")
+    gLogger.debug("Checking Types...")
+    checkType(dateString, str)
+    checkType(time_pattern, str)
+
+    gLogger.debug("Converting date string to datetime object...")
     d = dt.datetime.strptime(dateString, time_pattern)
+
+    gLogger.debug("Getting datetime object from start of epoch...")
     epoch = dt.datetime(1970,1,1)
+
+    gLogger.debug("Returning seconds from start of epoch...")
     return (d-epoch).total_seconds()
 
 def filterDict(dict, string, threshold): 
