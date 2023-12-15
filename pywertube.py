@@ -831,12 +831,6 @@ def filterDict(_dict, string, threshold):
     gLogger.debug("Returning filtered dictionary...")
     return tempDict
 
-def printMultiList(*args):
-    for list_ in args:
-        for element in list_:
-            print(element, end=' ')
-        print('\n')
-
 def sanitizeTitle(string):
     char2Remove = '",\',?'
     for char in char2Remove:
