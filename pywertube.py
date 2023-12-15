@@ -793,7 +793,7 @@ def printMultiList(*args):
         print('\n')
 
 def sanitizeTitle(string):
-    char2Remove = '",\''
+    char2Remove = '",\',?'
     for char in char2Remove:
         string = string.replace(char,'')
     return string
