@@ -761,6 +761,9 @@ def getProjectVariables(file):
 def durationString2Sec(durationString, hours_pattern=re.compile(r'(\d+)H'), minutes_pattern=re.compile(r'(\d+)M'), seconds_pattern=re.compile(r'(\d+)S')):
     gLogger.debug("Entering...")
 
+    gLogger.debug("Making sure durationString Variable is string...")
+    checkType(durationString, str)
+
     gLogger.debug("Checking time patterns...")
     checkType(hours_pattern, re.Pattern)
     checkType(minutes_pattern, re.Pattern)
