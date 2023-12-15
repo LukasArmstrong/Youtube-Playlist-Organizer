@@ -377,6 +377,7 @@ def getWatchLater(youtube, playlistID, nextPageBoolean):
                     pass
             numberRequest += 1 #Tracking quota usage
             gLogger.debug("Unpacking youtube video response...")
+            videoSnippet = ()
             for vid in vid_response["items"]:
                 gLogger.debug("Converting video duration to more useful format...")
                 duration = durationString2Sec(vid["contentDetails"]["duration"])
@@ -385,9 +386,10 @@ def getWatchLater(youtube, playlistID, nextPageBoolean):
                 gLogger.debug("Video duration and publish time converted! Storing in tuple...")
                 videoSnippet = (duration, vid["snippet"]["channelTitle"], utcPublishedTime, vid["snippet"]["title"])
             gLogger.debug("Combining video tuples...")
-            video = video + videoSnippet
-            gLogger.debug("Adding video tuple to watch later list...")
-            watchLaterList.append(video)
+            if videoSnippet:
+                video = video + videoSnippet
+                gLogger.debug("Adding video tuple to watch later list...")
+                watchLaterList.append(video)
         gLogger.debug("Checking if should get next page...")
         if nextPageBoolean:
             gLogger.debug("Getting next page token...")    
