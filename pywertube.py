@@ -752,6 +752,7 @@ def renumberWatchLater(watchLater):
 
 def getProjectVariables(file):
     gLogger.debug("Entering...")
+    checkType(file, str)
     with open(file, 'r') as f:
         projectVariables = yaml.safe_load(f)
     gLogger.debug("Returning tuple packed values...")
