@@ -79,14 +79,18 @@ def sort():
                         sortLog.info(f"Watchlater updated on youtube! Quota incurred: {videoOps*50}, Total: {quota}")
                         youtubeWatchLater = pt.renumberWatchLater(youtubeWatchLater)
                         sortLog.debug("Watchlater renumbered for DB storage!")
-                    except Exception:
+                    except Exception as e:
                         msg = "Error updating yt watch later"
-                except Exception:
+                        sortLog.error(f"Error: {e}")
+                except Exception as e:
                     msg = "Error sorting Watch Later"
-            except Exception:
+                    sortLog.error(f"Error: {e}")
+            except Exception as e:
                 msg = "Error getting yt credentials or watchlater list"
-        except Exception:
+                sortLog.error(f"Error: {e}")
+        except Exception as e:
             msg =  "Error getting data from DB"
+            sortLog.error(f"Error: {e}")
         try:
             pt.storeWatchLaterDB(dbConnection, youtubeWatchLater)
             sortLog.info("Watchlater stored in DB for stats!")
