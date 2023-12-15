@@ -3,11 +3,13 @@ import xmltodict as x2d
 import pywertube as pt
 import uuid
 import mariadb
+import os
 from datetime import datetime as dt, timedelta
 from googleapiclient.discovery import build
 
 app = Flask(__name__)
-logger = pt.initLogger(__file__, debug=True, verbose=False)
+if 'TERM_PROGRAM' in os.environ.keys() and os.environ['TERM_PROGRAM'] == 'vscode':
+    logger = pt.initLogger(__file__, debug=True, verbose=False)
 dbConnection = None
 storedCreators = None
 
