@@ -229,7 +229,7 @@ def storeWatchLaterDB(conn, watchlater):
     for video in watchlater:
         videoList = list(video)
         videoList[6] = sanitizeTitle(videoList[6])
-        setDataDB(conn, 'WatchLaterList', ['position', 'playlistID', 'videoID', 'duration', 'creator', 'publishedTimeUTC', 'title'], list(video), 'ON DUPLICATE KEY UPDATE position=Value(position)')
+        setDataDB(conn, 'WatchLaterList', ['position', 'playlistID', 'videoID', 'duration', 'creator', 'publishedTimeUTC', 'title'], videoList, 'ON DUPLICATE KEY UPDATE position=Value(position)')
     gLogger.debug("Watch Later stored in database!")
     gLogger.debug(f"Leaving...")
         
