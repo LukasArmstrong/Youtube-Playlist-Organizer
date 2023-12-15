@@ -744,6 +744,7 @@ def checkType(var, type):
 
 def renumberWatchLater(watchLater):
     gLogger.debug("Entering...")
+    checkType(watchLater, list)
     for x in range(len(watchLater)):
         watchLater[x] = (x, watchLater[x][1], watchLater[x][2], watchLater[x][3], watchLater[x][4], watchLater[x][5], watchLater[x][6])
     gLogger.debug("Returning renumbered Watch Later...")
