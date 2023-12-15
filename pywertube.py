@@ -746,12 +746,14 @@ def renumberWatchLater(watchLater):
     gLogger.debug("Entering...")
     for x in range(len(watchLater)):
         watchLater[x] = (x, watchLater[x][1], watchLater[x][2], watchLater[x][3], watchLater[x][4], watchLater[x][5], watchLater[x][6])
-    gLogger.debug("Leaving...")
+    gLogger.debug("Returning renumbered Watch Later...")
     return watchLater
 
 def getProjectVariables(file):
+    gLogger.debug("Entering...")
     with open(file, 'r') as f:
         projectVariables = yaml.safe_load(f)
+    gLogger.debug("Returning tuple packed values...")
     return tuple(projectVariables.values())
 
 def durationString2Sec(durationString, hours_pattern=re.compile(r'(\d+)H'), minutes_pattern=re.compile(r'(\d+)M'), seconds_pattern=re.compile(r'(\d+)S')):
