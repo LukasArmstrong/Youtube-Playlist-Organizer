@@ -79,6 +79,7 @@ def sort():
                         sortLog.info(f"Watchlater updated on youtube! Quota incurred: {videoOps*50}, Total: {quota}")
                         youtubeWatchLater = pt.renumberWatchLater(youtubeWatchLater)
                         sortLog.debug("Watchlater renumbered for DB storage!")
+                        msg = "Sorted"
                     except Exception as e:
                         msg = "Error updating yt watch later"
                         sortLog.error(f"Error: {e}")
@@ -98,7 +99,7 @@ def sort():
             sortLog.info(f"Used Quota set! Total accrude: {quota}")
             dbConnection.close()
             sortLog.info(f"Database connection closed!")
-            msg = "Sorted!"
+            msg = "& Stored!"
         except Exception:
             if msg != "":
                 msg += " & "
