@@ -6,3 +6,4 @@ mariadb==1.1.8
 natsort==8.4.0
 PyYAML==6.0.1
 xmltodict==0.13.0
+structlog==23.2.0
