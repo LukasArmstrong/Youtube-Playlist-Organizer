@@ -118,7 +118,7 @@ database, mariaPort, password, serverIp, user, projectID, portNumber, playlistID
 
 numberedSerializedKeywords = ['series', 'part', 'finale', 'episode', 'ep', 'smarter every day']
 serializedKeywords = ['finale']
-sequentialCreators = ['Wintergatan', 'LegalEagle','penguinz0', 'AntsCanada', 'Brozime']
+sequentialCreators = ['Wintergatan', 'LegalEagle','penguinz0', 'AntsCanada', 'Brozime', 'FE-Engineer']
 
 pt.getDataBaseConnection(user, password, serverIp, mariaPort, database)
 
