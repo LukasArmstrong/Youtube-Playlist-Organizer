@@ -18,8 +18,10 @@ import logging
 #==================================
 global gNumStrikes
 global gLogger
+global gDBconn
 gNumStrikes = 3
 gLogger = None
+gDBconn = None
 #==================================
 #            Logging
 #==================================
@@ -117,7 +119,8 @@ def getDataBaseConnection(usr, pswd, host, port, db):
     checkType(db, str)
     try:
         gLogger.debug("Attempting MariaDB connection...")
-        conn = mariadb.connect(
+        global gDBconn
+        gDBconn = mariadb.connect(
             user = usr,
             password = pswd,
             host = host,
@@ -129,14 +132,13 @@ def getDataBaseConnection(usr, pswd, host, port, db):
         gLogger.error(f"Error connecting to MariaDB Platform.  Type: {type(e)} Arguements:{e}", usr=usr, pswd=pswd, host=host, port=port, db=db)
         raise mariadb.Error(e)
     gLogger.debug("Leaving...")
-    return conn
 
-def getDataDB(conn, tableString, cols, optionsString=""):
+def getDataDB(tableString, cols, optionsString=""):
     gLogger.debug("Entering...")
     gLogger.debug("Checking types...")
     checkType(tableString, str)
     checkType(cols, list)
-    cur = conn.cursor()
+    cur = gDBconn.cursor()
     gLogger.debug("Get connection cursor obtained...")
     query = "Select " + " ,".join(cols) +" from " + tableString + " " + optionsString
     try:
@@ -144,23 +146,23 @@ def getDataDB(conn, tableString, cols, optionsString=""):
         cur.execute(query)
         gLogger.debug("Query Successful!")
     except mariadb.Error as e:
-        gLogger.error(f"Error executing query {query}.  Type: {type(e)} Arguements:{e}", conn=conn, tableString=tableString, cols=cols)
+        gLogger.error(f"Error executing query {query}.  Type: {type(e)} Arguements:{e}", conn=gDBconn, tableString=tableString, cols=cols)
         raise mariadb.Error(e)
     gLogger.debug("Leaving...")
     return cur.fetchall()
 
-def setDataDB(conn, tableString, cols_list, vals_list, optionsString=""):
+def setDataDB(tableString, cols_list, vals_list, optionsString=""):
     gLogger.debug("Entering...")
     gLogger.debug("Checking Number of Columns = Number of values to assign...")
     if len(cols_list) != len(vals_list):
-        gLogger.error("Lengths of Columns and Values differ!", DB_Connection = conn, Table = tableString, Columns = cols_list, Values = vals_list)
+        gLogger.error("Lengths of Columns and Values differ!", DB_Connection = gDBconn, Table = tableString, Columns = cols_list, Values = vals_list)
         raise ValueError("Lengths of Columns and Values differ!")
     gLogger.debug("Checking types...")
     checkType(tableString, str)
     checkType(cols_list, list)
     checkType(vals_list, list)
     checkType(optionsString, str)
-    cur = conn.cursor()
+    cur = gDBconn.cursor()
     gLogger.debug("Set connection cursor obtained!")
     query = f"Insert Into {tableString}{*cols_list,}"
     query = query.replace("'", "`")
@@ -169,80 +171,88 @@ def setDataDB(conn, tableString, cols_list, vals_list, optionsString=""):
         gLogger.debug("Attempting query...")
         cur.execute(query)
         gLogger.debug("Query Successful!")
-        conn.commit()
+        gDBconn.commit()
         gLogger.debug("Query Committed!")
     except mariadb.Error as e:
-        gLogger.error(f"Error executing query {query}.  Type: {type(e)} Arguements:{e}", DB_Connection = conn, Table = tableString, Columns = cols_list, Values = vals_list)
+        gLogger.error(f"Error executing query {query}.  Type: {type(e)} Arguements:{e}", DB_Connection = gDBconn, Table = tableString, Columns = cols_list, Values = vals_list)
         raise mariadb.Error(e)
     gLogger.debug(f"Leaving...")
 
-def updateDataDB(conn, tableString, cols_list, vals_list, optionsString=""):
+def updateDataDB(tableString, cols_list, vals_list, optionsString=""):
     gLogger.debug("Entering...")
     gLogger.debug("Checking Number of Columns = Number of values to assign...")
     if len(cols_list) != len(vals_list):
-        gLogger.error("Lengths of Columns and Values differ!", DB_Connection = conn, Table = tableString, Columns = cols_list, Values = vals_list)
+        gLogger.error("Lengths of Columns and Values differ!", DB_Connection = gDBconn, Table = tableString, Columns = cols_list, Values = vals_list)
         raise ValueError("Lengths of Columns and Values differ!")
     gLogger.debug("Checking types...")
     checkType(tableString, str)
     checkType(cols_list, list)
     checkType(vals_list, list)
     checkType(optionsString, str)
-    cur = conn.cursor()
+    cur = gDBconn.cursor()
     gLogger.debug("Update connection cursor obtained!")
     query = f"Update {tableString} set { ', '.join(f'`{x}` = {str(vals_list[i])}' for i, x in enumerate(cols_list)) } {optionsString}"
     try:
         gLogger.debug("Attempting query...")
         cur.execute(query)
         gLogger.debug("Query Successful!")
-        conn.commit()
+        gDBconn.commit()
         gLogger.debug("Query Committed!")
     except mariadb.Error as e:
-        gLogger.error(f"Error executing query {query}.  Type: {type(e)} Arguements:{e}", DB_Connection = conn, Table = tableString, Columns = cols_list, Values = vals_list)
+        gLogger.error(f"Error executing query {query}.  Type: {type(e)} Arguements:{e}", DB_Connection = gDBconn, Table = tableString, Columns = cols_list, Values = vals_list)
         raise mariadb.Error(e)
     gLogger.debug(f"Leaving...")
 
-def clearTableDB(conn, tableString):
+def clearTableDB(tableString):
     gLogger.debug("Entering...")
     gLogger.debug("Checking types...")
     checkType(tableString, str)
-    cur = conn.cursor()
+    cur = gDBconn.cursor()
     gLogger.debug("Delete connection cursor obtained!")
     query = f"Delete From {tableString}"
     try:
         gLogger.debug("Attempting query...")
         cur.execute(query)
         gLogger.debug("Query Successful!")
-        conn.commit()
+        gDBconn.commit()
         gLogger.debug("Query Committed!")
     except mariadb.Error as e:
-        gLogger.error(f"Error executing query {query}.  Type: {type(e)} Arguements:{e}", DB_Connection = conn, Table = tableString)
+        gLogger.error(f"Error executing query {query}.  Type: {type(e)} Arguements:{e}", DB_Connection = gDBconn, Table = tableString)
         raise mariadb.Error(e)
     gLogger.debug(f"Leaving...")
 
-def storeWatchLaterDB(conn, watchlater):
+def storeWatchLaterDB(watchlater):
     gLogger.debug("Entering...")
     gLogger.debug("Checking types...")
     checkType(watchlater, list)
-    clearTableDB(conn, 'WatchLaterList')
+    clearTableDB( 'WatchLaterList')
     gLogger.debug("WatchLaterList Cleared!")
     gLogger.debug("Filling new list...")
     for video in watchlater:
         videoList = list(video)
         videoList[6] = sanitizeTitle(videoList[6])
-        setDataDB(conn, 'WatchLaterList', ['position', 'playlistID', 'videoID', 'duration', 'creator', 'publishedTimeUTC', 'title'], videoList, 'ON DUPLICATE KEY UPDATE position=Value(position)')
+        setDataDB('WatchLaterList', ['position', 'playlistID', 'videoID', 'duration', 'creator', 'publishedTimeUTC', 'title'], videoList, 'ON DUPLICATE KEY UPDATE position=Value(position)')
     gLogger.debug("Watch Later stored in database!")
     gLogger.debug(f"Leaving...")
         
+def CloseDBconnnection():
+    gLogger.debug("Entering...")
+    gLogger.debug("Closing DB connection...")
+    gDBconn.close()
+    gLogger.debug("Clearing Global DB connection variable...")
+    global gDBconn
+    gDBconn = None
+    gLogger.debug("Cleared! Leaving...")
 
 #==================================
 #    Qouta Controller Functions
 #==================================
-def getQuotaUsed(connection, projectID):
+def getQuotaUsed(projectID):
     gLogger.debug("Entering...")
     optionString = "Where(projectID= "+ str(projectID) + ")"
     gLogger.debug(f"Where statement: {optionString}")
     gLogger.debug("Getting Latest date...")
-    dbDate = getDataDB(connection, 'QuotaLimit', ['MAX(date)'], optionString)
+    dbDate = getDataDB('QuotaLimit', ['MAX(date)'], optionString)
     gLogger.debug("Latest date obtained!")
     gLogger.debug("Perfroming logic if date is today or not...")
     if dt.datetime.today() == dbDate:
@@ -250,7 +260,7 @@ def getQuotaUsed(connection, projectID):
         optionString= f"Where Date = {dbDate} and projectID = {projectID}"
         gLogger.debug(f"Where statement: {optionString}")
         gLogger.debug("Getting used quota...")
-        amount = getDataDB(connection,'QuotaLimit', ['Amount'], optionString)
+        amount = getDataDB('QuotaLimit', ['Amount'], optionString)
         gLogger.debug("Returning used quota and date...")
         return amount, True
     else:
@@ -258,15 +268,15 @@ def getQuotaUsed(connection, projectID):
         gLogger.debug("Reseting quota...")
         return 0, False
 
-def setQuotaUsed(connection, inDB, quota, projectID):
+def setQuotaUsed(inDB, quota, projectID):
     gLogger.debug("Entering...")
     if not inDB:
         gLogger.debug("Creating new quota record...")
-        setDataDB(connection, 'QuotaLimit', ['date', 'amount', 'projectID'], [dt.date.today().strftime("%Y/%m/%d"), quota, projectID])
+        setDataDB('QuotaLimit', ['date', 'amount', 'projectID'], [dt.date.today().strftime("%Y/%m/%d"), quota, projectID])
     else:
         gLogger.debug("Updating quota record...")
         optionsString = f"Where Date = {dt.date.today()} and projectID = {projectID}"
-        updateDataDB(connection, 'QuotaLimit', ['Amount'], [quota], optionsString)
+        updateDataDB('QuotaLimit', ['Amount'], [quota], optionsString)
     gLogger.debug("Quota Set!")
     gLogger.debug("Leaving...")
         
@@ -610,20 +620,30 @@ def getSequentialVideos(watchLaterList, sequentialCreators,durationThreshold):
 
 def getFollowUpVideos(watchLaterList, FollowUpIDList):
     gLogger.debug("Entering...")
+    gLogger.debug("Checking types...")
+    checkType(watchLaterList, list)
+    checkType(FollowUpIDList, list)
+
     gLogger.debug("Pulling out videos records from watcherlater if in Follow up list...")
     videos = [item for item in watchLaterList if item[2] in FollowUpIDList[1]] #get all videos records that match on in follow up
+
+    gLogger.debug("Checking if follow up videos in watch later still")
+    if not videos:
+        clearTableDB('OrderVideos')
+        return [] #if no videos match up, return empty list
+    
     gLogger.debug("Pulling out parent videos from follow up list...")
-    ids = [v for i, v in enumerate(FollowUpIDList[0]) if FollowUpIDList[2][i] is None] #find all parent videos
+    parentIds = [v for i, v in enumerate(FollowUpIDList[0]) if FollowUpIDList[2][i] is None] #find all parent videos
     nullCount = FollowUpIDList[2].count(None) #get the number of parent videos
     FollowUpWatchLater = [[] for i in range(nullCount)] #create 2d array where each row is collection of follow up videos
     gLogger.debug("Entering loop to order follow up...")
     for index, id in enumerate(FollowUpIDList[2]):
         if id is None: #If parent ID
             gLogger.debug("Getting ID of Parent video...")
-            idIndex = ids.index(FollowUpIDList[0][index])
+            idIndex = parentIds.index(FollowUpIDList[0][index])
         else:
             gLogger.debug("Getting ID of Child video...")
-            idIndex = ids.index(id)
+            idIndex = parentIds.index(id)
         gLogger.debug("Ordering follow up video...")
         FollowUpWatchLater[idIndex].append(videos[index])
     gLogger.debug("Returning follow up watch later...")

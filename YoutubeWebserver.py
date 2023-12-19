@@ -10,7 +10,6 @@ from googleapiclient.discovery import build
 app = Flask(__name__)
 if 'TERM_PROGRAM' in os.environ.keys() and os.environ['TERM_PROGRAM'] == 'vscode':
     logger = pt.initLogger(__file__, debug=True, verbose=False)
-dbConnection = None
 storedCreators = None
 
 @app.route('/webhook', methods=['POST', 'GET'])
@@ -21,9 +20,9 @@ def webhook():
 
         if dt.today().strftime("%Y-%m-%d") == entry["published"].split("T")[0]:
             if entry["author"]["name"] not in storedCreators:
-                pt.insertCreator(dbConnection, entry["author"]["name"], entry["yt:channelId"])
+                pt.insertCreator(entry["author"]["name"], entry["yt:channelId"])
                 storedCreators.append(entry["author"]["name"])
-            pt.insertTime(dbConnection, storedCreators.index(entry["author"]["name"])+1, entry["published"], entry["yt:videoId"])
+            pt.insertTime(storedCreators.index(entry["author"]["name"])+1, entry["published"], entry["yt:videoId"])
         else:
             print(entry["author"]["name"] + " has updated a video!")
         return request.data
@@ -45,21 +44,21 @@ def sort():
     if request.method == 'GET':
         sortLog.info("Entering GET Request")
         try:
-            dbConnection = pt.getDataBaseConnection(user, password, serverIp, mariaPort, database)
+            pt.getDataBaseConnection(user, password, serverIp, mariaPort, database)
             sortLog.info("DataBase Connection made!")
-            Data = pt.getDataDB(dbConnection, "Creators", ["creators", "priorityScore"])
+            Data = pt.getDataDB("Creators", ["creators", "priorityScore"])
             sortLog.info("Creators and their Priority Score obtained!")
             creatorDictionary = dict(Data)
             sortLog.debug("Dictionary made from creator and priority score")
-            Data = pt.getDataDB(dbConnection, "Keyphrases", ["phrase", "score"])
+            Data = pt.getDataDB("Keyphrases", ["phrase", "score"])
             sortLog.info("Keyphrase and their Priority Score obtained!")
             keywordDictionary = dict(Data)
             sortLog.debug("Dictionary made from keyphrase and priority score")
-            Data = pt.getDataDB(dbConnection, "OrderVideos", ["id", "videoID", "predecentVideoID"])
+            Data = pt.getDataDB("OrderVideos", ["id", "videoID", "predecentVideoID"])
             sortLog.info("Follow up video data obtained!")
             videoFollowUpList = list(map(list, zip(*Data)))
             sortLog.debug("List made from video follow up data")
-            quota, inDB = pt.getQuotaUsed(dbConnection,projectID)
+            quota, inDB = pt.getQuotaUsed(projectID)
             sortLog.info(f"Used Quota obtained! So far incurred: {quota}")
             try:
                 activeCredentials = pt.getCredentials(portNumber, clientSecretFile)
@@ -93,11 +92,11 @@ def sort():
             msg =  "Error getting data from DB"
             sortLog.error(f"Error: {e}")
         try:
-            pt.storeWatchLaterDB(dbConnection, youtubeWatchLater)
+            pt.storeWatchLaterDB(youtubeWatchLater)
             sortLog.info("Watchlater stored in DB for stats!")
-            pt.setQuotaUsed(dbConnection, inDB, quota, 1)
+            pt.setQuotaUsed(inDB, quota, 1)
             sortLog.info(f"Used Quota set! Total accrude: {quota}")
-            dbConnection.close()
+            pt.CloseDBconnnection()
             sortLog.info(f"Database connection closed!")
             msg = "& Stored!"
         except Exception:
@@ -121,6 +120,6 @@ numberedSerializedKeywords = ['series', 'part', 'finale', 'episode', 'ep', 'smar
 serializedKeywords = ['finale']
 sequentialCreators = ['Wintergatan', 'LegalEagle','penguinz0', 'AntsCanada', 'Brozime']
 
-dbConnection = pt.getDataBaseConnection(user, password, serverIp, mariaPort, database)
+pt.getDataBaseConnection(user, password, serverIp, mariaPort, database)
 
 app.run(host=hostIP, port=hostPort)
