@@ -257,7 +257,7 @@ def getQuotaUsed(projectID):
     dbDate = getDataDB('QuotaLimit', ['MAX(date)'], optionString)
     gLogger.debug("Latest date obtained!")
     gLogger.debug("Perfroming logic if date is today or not...")
-    if dt.datetime.today() == dbDate:
+    if dt.date.today() == dbDate[0][0]:
         gLogger.debug("Date is today...")
         optionString= f"Where Date = {dbDate} and projectID = {projectID}"
         gLogger.debug(f"Where statement: {optionString}")
