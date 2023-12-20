@@ -102,7 +102,7 @@ def sort():
             sortLog.info("Watch later stats stored")
             pt.CloseDBconnnection()
             sortLog.info(f"Database connection closed!")
-            msg = "& Stored!"
+            msg += " & Stored!"
         except Exception:
             if msg != "":
                 msg += " & "

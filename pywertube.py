@@ -239,9 +239,9 @@ def storeWatchLaterDB(watchlater):
 def CloseDBconnnection():
     gLogger.debug("Entering...")
     gLogger.debug("Closing DB connection...")
+    global gDBconn
     gDBconn.close()
     gLogger.debug("Clearing Global DB connection variable...")
-    global gDBconn
     gDBconn = None
     gLogger.debug("Cleared! Leaving...")
 
@@ -688,7 +688,7 @@ def sortSequentialVideo(watchLaterList):
     return watchLaterList
 
 def sortWatchLater(watchLaterList, creatorDict, keywordDict, numSerKeywords, serKeywords, videoIDFollowUpList, sequentialCreators):
-    #WatchLaterList structured as (position on yt, playlist id for yt, video id for yt, duration in seconds, creator, published time in unix time, video title)
+    #WatchLaterList structured as (0-position on yt, 1-playlist id for yt, 2-video id for yt, 3-duration in seconds, 4-creator, 5-published time in unix time, 6-video title)
     gLogger.debug("Entering...")
     gLogger.debug("Initalizing variables...")
     videoCountThreshold = 50 #Number of items in list to determine priority limit
@@ -709,7 +709,10 @@ def sortWatchLater(watchLaterList, creatorDict, keywordDict, numSerKeywords, ser
     gLogger.debug("Getting Priority list...")
     priorityWatchLater, workingWatchLater = getPriorityVideos(watchLaterList, creatorDict, keywordDict, priorityThreshold, durationThreshold)
     gLogger.debug("Priority list obtained! Getting Follow-up list...")
-    followUpWatchLater = getFollowUpVideos(workingWatchLater, videoIDFollowUpList)
+    if videoIDFollowUpList:
+        followUpWatchLater = getFollowUpVideos(workingWatchLater, videoIDFollowUpList)
+    else:
+        followUpWatchLater = []
     gLogger.debug("Follow-up list obtained! Getting Serialized list...")
     seriesWatchLater, workingWatchLater = getSerializedVideos(workingWatchLater, numSerKeywords, serKeywords)
     gLogger.debug("Serialized list obtained! Getting Sequential list...")
