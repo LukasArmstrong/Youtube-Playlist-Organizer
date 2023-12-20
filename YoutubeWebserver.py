@@ -43,6 +43,7 @@ def sort():
     sortLog.info("sortLogger set as logger!")
     if request.method == 'GET':
         sortLog.info("Entering GET Request")
+        
         try:
             pt.getDataBaseConnection(user, password, serverIp, mariaPort, database)
             sortLog.info("DataBase Connection made!")
@@ -78,35 +79,38 @@ def sort():
                         sortLog.info(f"Watchlater updated on youtube! Quota incurred: {videoOps*50}, Total: {quota}")
                         youtubeWatchLater = pt.renumberWatchLater(youtubeWatchLater)
                         sortLog.debug("Watchlater renumbered for DB storage!")
-                        msg = "Sorted"
+                        msg = "Sorted! <br>"
+                        try:
+                            pt.storeWatchLaterDB(youtubeWatchLater)
+                            sortLog.info("Watchlater stored in DB for stats!")
+                            datetime = dt.now().strftime('%Y-%m-%d %H:%M:%S')
+                            pt.WatchLaterStats(youtubeWatchLater, datetime)
+                            quota += pt.WatchLaterCreatorStats(youtubeWatchLater, datetime, youtube)
+                            msg += "Stored!<br>"
+                        except Exception as e:
+                            msg += "Error storing stats!<br>"
+                            sortLog.error(f"Error: {e}")
                     except Exception as e:
-                        msg = "Error updating yt watch later"
+                        msg += "Error updating yt watch later!<br>"
                         sortLog.error(f"Error: {e}")
                 except Exception as e:
-                    msg = "Error sorting Watch Later"
+                    msg += "Error sorting Watch Later!<br>"
                     sortLog.error(f"Error: {e}")
             except Exception as e:
-                msg = "Error getting yt credentials or watchlater list"
+                msg += "Error getting yt credentials or watchlater list!<br>"
                 sortLog.error(f"Error: {e}")
         except Exception as e:
-            msg =  "Error getting data from DB"
+            msg +=  "Error getting data from DB!<br>"
             sortLog.error(f"Error: {e}")
         try:
-            pt.storeWatchLaterDB(youtubeWatchLater)
-            sortLog.info("Watchlater stored in DB for stats!")
             pt.setQuotaUsed(inDB, quota, 1)
             sortLog.info(f"Used Quota set! Total accrude: {quota}")
-            datetime = dt.now().strftime('%Y-%m-%d %H:%M:%S')
-            pt.WatchLaterStats(youtubeWatchLater, datetime)
-            pt.WatchLaterCreatorStats(youtubeWatchLater, datetime, youtube) #This can use quota
             sortLog.info("Watch later stats stored")
+            msg += f"Quota Saved! Accruded: {quota}<br>"
             pt.CloseDBconnnection()
             sortLog.info(f"Database connection closed!")
-            msg += " & Stored!"
         except Exception:
-            if msg != "":
-                msg += " & "
-            msg += "Error setting data in DB"
+            msg += "Error setting data in DB <br>"
         return msg
 @app.route('/renew', methods=['GET'])  
 def reNewToken():
