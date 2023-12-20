@@ -13,6 +13,7 @@ import yaml
 import structlog
 import logging
 import statistics as stats
+import googleapiclient.discovery as gacd
 
 #==================================
 #            Variables
@@ -471,10 +472,16 @@ def updatePlaylist(watchLater, sortedWatchLater, youtube, playlistID):
     gLogger.debug("Leaving...")
     return numOperations, watchLater
 
-def getChannelID(creator, youtube):
-    ch_request = youtube.channels().list(
-        part="id",
-        forUsername = sanitizeTitle(creator.replace(" ", ""))
+def findChannelID(creator, youtube):
+    gLogger.debug("Entering...")
+    gLogger.debug("Checking Types...")
+    checkType(creator, str)
+    checkType(youtube, gacd.Resource)
+    gLogger.debug("Creating channel request...")
+    ch_request = youtube.search().list(
+        part="snippet",
+        type="channel",
+        q = creator
     )
     try:
         gLogger.debug("Executing youtube channel request...")
@@ -484,10 +491,11 @@ def getChannelID(creator, youtube):
         gLogger.error(f"Error executing youtube channel request. Type: {type(e)} Arguements:{e}")
         raise RuntimeError(e)
     try: 
-        id = ch_response["items"][0]["id"]
+        id = ch_response["items"][0]["id"]["channelId"]
     except Exception:
         id = ""
         gLogger.info(f"Couldn't find channel ID for {creator}")
+    gLogger.debug("Returning channel id")
     return id
 
 def getVideoYT(youtube, videoID):
@@ -891,35 +899,58 @@ def sanitizeTitle(string):
     return string
 
 def getCreatorDictionary(creatorList, youtube):
+    gLogger.debug("Entering...")
+    gLogger.debug("Checking Types...")
+    checkType(creatorList, list)
+    checkType(youtube, gacd.Resource)
+    gLogger.debug("Getting Ids for creators...")
     data = getDataDB('Creators', ['id', 'creators'])
     dataDict = dict(data)
+    gLogger.debug("Swapping values and keys in creator dict...")
     creatorDict = dict((v, k) for k, v in dataDict.items())
     lastID = max(creatorDict.values())
+    gLogger.debug("Looping over creators to make sure all have an ID...")
     for creator in creatorList:
         if sanitizeTitle(creator) not in creatorDict:
             cols = ['creators', 'priorityScore', 'channelId', 'sequentialVideos']
-            vals = [sanitizeTitle(creator), 0, getChannelID(creator, youtube), 0]
+            vals = [sanitizeTitle(creator), 0, findChannelID(creator, youtube), 0]
             try:
                 setDataDB('Creators', cols, vals)
             except Exception as e:
                 gLogger.error(f"Error insert creator: {e}")
             creatorDict[creator] = lastID+1
             lastID += 1
+    gLogger.debug("Returning creator dictionary...")
     return creatorDict
 
 ### stats
 
 def WatchLaterStats(watchLater, datetime):
+    gLogger.debug("Entering...")
+    gLogger.debug("Checking Types...")
+    checkType(watchLater, list)
+    checkType(datetime, str)
+    gLogger.debug("Creating creator list and duration list...")
     durationList = [video[3] for video in watchLater]
     creatorList = [video[4] for video in watchLater]
+    gLogger.debug("Creatings watch later stats...")
     cols = ['Date', 'Length', 'TotalDuration', 'AverageDuration', 'MedianDuration', 'StdvDuration', 'VarianceDuration', 'NumUniqueCreators']
     vals = [datetime, len(watchLater), sum(durationList), stats.fmean(durationList), stats.median(durationList), stats.pstdev(durationList), stats.pvariance(durationList), len(set(creatorList))]
     setDataDB('WatchLaterStats', cols, vals)
+    gLogger.debug("Leaving...")
 
 def WatchLaterCreatorStats(watchLater, datetime, youtube):
+    gLogger.debug("Entering...")
+    gLogger.debug("Checking Types...")
+    checkType(watchLater, list)
+    checkType(datetime, str)
+    checkType(youtube, gacd.Resource)
+    gLogger.debug("Creating creator list and duration list...")
     creatorList = [video[4] for video in watchLater]
     durationList = [video[3] for video in watchLater]
+    gLogger.debug("Creating Creator -> ID mapping...")
     creatorDict = getCreatorDictionary( creatorList, youtube)
+    gLogger.debug("Looping over creators to save stats")
     for creator in creatorDict.keys():
         creatorDurationList = [video[3] for video in watchLater if video[4] == creator]
         creatorPublishList = [video[5] for video in watchLater if video[4] == creator]
@@ -927,3 +958,4 @@ def WatchLaterCreatorStats(watchLater, datetime, youtube):
             cols = ['date', 'CreatorID', 'Frequency', 'Duration', 'OldestVideo', 'LongestVideo', 'AverageUnixAge', 'FrequencyPercentage', 'DurationPercentage']
             vals = [datetime, creatorDict[creator], creatorList.count(creator), sum(creatorDurationList), creatorPublishList[-1], max(creatorDurationList), stats.fmean(creatorPublishList), creatorList.count(creator)/len(creatorList), sum(creatorDurationList)/sum(durationList)]
             setDataDB('WatchLaterCreatorStats', cols, vals)
+    gLogger.debug("Leaving...")
