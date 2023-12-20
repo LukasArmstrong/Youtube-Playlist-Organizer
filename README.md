@@ -156,8 +156,8 @@ However before the first sort, you'll need to get a token. This is done by:
 ## Roadmap
 
 - [x] Add Getting Started Section to README
-- [ ] Add usage section to README
-- [ ] Proper logging support
+- [x] Add usage section to README
+- [x] Proper logging support
 - [ ] Auto add videos to watchlater queue. Hopefully in correct position
      - [ ] Tool to scrape youtube subscriptions 
 - [ ] Smarter use of Quota limit data
