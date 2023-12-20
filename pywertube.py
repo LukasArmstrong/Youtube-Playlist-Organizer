@@ -910,10 +910,12 @@ def getCreatorDictionary(creatorList, youtube):
     creatorDict = dict((v, k) for k, v in dataDict.items())
     lastID = max(creatorDict.values())
     gLogger.debug("Looping over creators to make sure all have an ID...")
+    quotaUsed = 0
     for creator in creatorList:
         if sanitizeTitle(creator) not in creatorDict:
             cols = ['creators', 'priorityScore', 'channelId', 'sequentialVideos']
             vals = [sanitizeTitle(creator), 0, findChannelID(creator, youtube), 0]
+            quotaUsed += 1 
             try:
                 setDataDB('Creators', cols, vals)
             except Exception as e:
@@ -921,7 +923,7 @@ def getCreatorDictionary(creatorList, youtube):
             creatorDict[creator] = lastID+1
             lastID += 1
     gLogger.debug("Returning creator dictionary...")
-    return creatorDict
+    return creatorDict, quotaUsed*100
 
 ### stats
 
@@ -949,7 +951,7 @@ def WatchLaterCreatorStats(watchLater, datetime, youtube):
     creatorList = [video[4] for video in watchLater]
     durationList = [video[3] for video in watchLater]
     gLogger.debug("Creating Creator -> ID mapping...")
-    creatorDict = getCreatorDictionary( creatorList, youtube)
+    creatorDict, quotaUsed = getCreatorDictionary( creatorList, youtube)
     gLogger.debug("Looping over creators to save stats")
     for creator in creatorDict.keys():
         creatorDurationList = [video[3] for video in watchLater if video[4] == creator]
@@ -958,4 +960,5 @@ def WatchLaterCreatorStats(watchLater, datetime, youtube):
             cols = ['date', 'CreatorID', 'Frequency', 'Duration', 'OldestVideo', 'LongestVideo', 'AverageUnixAge', 'FrequencyPercentage', 'DurationPercentage']
             vals = [datetime, creatorDict[creator], creatorList.count(creator), sum(creatorDurationList), creatorPublishList[-1], max(creatorDurationList), stats.fmean(creatorPublishList), creatorList.count(creator)/len(creatorList), sum(creatorDurationList)/sum(durationList)]
             setDataDB('WatchLaterCreatorStats', cols, vals)
-    gLogger.debug("Leaving...")
+    gLogger.debug("Returning quota...")
+    return quotaUsed
