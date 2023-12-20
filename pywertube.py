@@ -12,6 +12,7 @@ from natsort import natsorted, ns
 import yaml
 import structlog
 import logging
+import statistics as stats
 
 #==================================
 #            Variables
@@ -470,6 +471,25 @@ def updatePlaylist(watchLater, sortedWatchLater, youtube, playlistID):
     gLogger.debug("Leaving...")
     return numOperations, watchLater
 
+def getChannelID(creator, youtube):
+    ch_request = youtube.channels().list(
+        part="id",
+        forUsername = sanitizeTitle(creator.replace(" ", ""))
+    )
+    try:
+        gLogger.debug("Executing youtube channel request...")
+        ch_response = ch_request.execute()
+        gLogger.debug("Channel request executed!")
+    except Exception as e:
+        gLogger.error(f"Error executing youtube channel request. Type: {type(e)} Arguements:{e}")
+        raise RuntimeError(e)
+    try: 
+        id = ch_response["items"][0]["id"]
+    except Exception:
+        id = ""
+        gLogger.info(f"Couldn't find channel ID for {creator}")
+    return id
+
 def getVideoYT(youtube, videoID):
     gLogger.debug("Enter...")
     videoErrorCount = 0
@@ -866,3 +886,41 @@ def sanitizeTitle(string):
     
     gLogger.debug("Returning sanitized string...")
     return string
+
+def getCreatorDictionary(creatorList, youtube):
+    data = getDataDB('Creators', ['id', 'creators'])
+    dataDict = dict(data)
+    creatorDict = dict((v, k) for k, v in dataDict.items())
+    lastID = max(creatorDict.values())
+    for creator in creatorList:
+        if sanitizeTitle(creator) not in creatorDict:
+            cols = ['creators', 'priorityScore', 'channelId', 'sequentialVideos']
+            vals = [sanitizeTitle(creator), 0, getChannelID(creator, youtube), 0]
+            try:
+                setDataDB('Creators', cols, vals)
+            except Exception as e:
+                gLogger.error(f"Error insert creator: {e}")
+            creatorDict[creator] = lastID+1
+            lastID += 1
+    return creatorDict
+
+### stats
+
+def WatchLaterStats(watchLater, datetime):
+    durationList = [video[3] for video in watchLater]
+    creatorList = [video[4] for video in watchLater]
+    cols = ['Date', 'Length', 'TotalDuration', 'AverageDuration', 'MedianDuration', 'StdvDuration', 'VarianceDuration', 'NumUniqueCreators']
+    vals = [datetime, len(watchLater), sum(durationList), stats.fmean(durationList), stats.median(durationList), stats.pstdev(durationList), stats.pvariance(durationList), len(set(creatorList))]
+    setDataDB('WatchLaterStats', cols, vals)
+
+def WatchLaterCreatorStats(watchLater, datetime, youtube):
+    creatorList = [video[4] for video in watchLater]
+    durationList = [video[3] for video in watchLater]
+    creatorDict = getCreatorDictionary( creatorList, youtube)
+    for creator in creatorDict.keys():
+        creatorDurationList = [video[3] for video in watchLater if video[4] == creator]
+        creatorPublishList = [video[5] for video in watchLater if video[4] == creator]
+        if creatorDurationList and creatorPublishList:
+            cols = ['date', 'CreatorID', 'Frequency', 'Duration', 'OldestVideo', 'LongestVideo', 'AverageUnixAge', 'FrequencyPercentage', 'DurationPercentage']
+            vals = [datetime, creatorDict[creator], creatorList.count(creator), sum(creatorDurationList), creatorPublishList[-1], max(creatorDurationList), stats.fmean(creatorPublishList), creatorList.count(creator)/len(creatorList), sum(creatorDurationList)/sum(durationList)]
+            setDataDB('WatchLaterCreatorStats', cols, vals)

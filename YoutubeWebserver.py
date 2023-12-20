@@ -96,6 +96,10 @@ def sort():
             sortLog.info("Watchlater stored in DB for stats!")
             pt.setQuotaUsed(inDB, quota, 1)
             sortLog.info(f"Used Quota set! Total accrude: {quota}")
+            datetime = dt.now().strftime('%Y-%m-%d %H:%M:%S')
+            pt.WatchLaterStats(youtubeWatchLater, datetime)
+            pt.WatchLaterCreatorStats(youtubeWatchLater, datetime, youtube) #This can use quota
+            sortLog.info("Watch later stats stored")
             pt.CloseDBconnnection()
             sortLog.info(f"Database connection closed!")
             msg = "& Stored!"
