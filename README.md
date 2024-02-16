@@ -22,11 +22,11 @@
 <!-- PROJECT LOGO -->
 <br />
 <div align="center">
-  <a href="https://github.com/LukasArmstrong/pywerTube">
+  <a href="https://github.com/LukasArmstrong/Youtube-Playlist-Organizer">
     <img src="Images/PywerTube.png" alt="Logo" width="80" height="80">
   </a>
 
-<h3 align="center">PywerTube</h3>
+<h3 align="center">Youtube Playlist Organizere</h3>
 
   <p align="center">
     Simple web flask server that sorts youtube watchlater by duration
