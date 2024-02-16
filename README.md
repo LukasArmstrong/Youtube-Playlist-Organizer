@@ -26,7 +26,7 @@
     <img src="Images/PywerTube.png" alt="Logo" width="80" height="80">
   </a>
 
-<h3 align="center">Youtube Playlist Organizere</h3>
+<h3 align="center">Youtube Playlist Organizer</h3>
 
   <p align="center">
     Simple web flask server that sorts youtube watchlater by duration
