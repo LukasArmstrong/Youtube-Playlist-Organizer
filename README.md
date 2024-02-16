@@ -32,15 +32,15 @@
     Simple web flask server that sorts youtube watchlater by duration
     <br />
     <!--
-    <a href="https://github.com/LukasArmstrong/pywerTube"><strong>Explore the docs »</strong></a>
+    <a href="https://github.com/LukasArmstrong/Youtube-Playlist-Organizer"><strong>Explore the docs »</strong></a>
     <br />
     <br />
-    <a href="https://github.com/LukasArmstrong/pywerTube">View Demo</a>
+    <a href="https://github.com/LukasArmstrong/Youtube-Playlist-Organizer">View Demo</a>
     ·
     -->
-    <a href="https://github.com/LukasArmstrong/pywerTube/issues">Report Bug</a>
+    <a href="https://github.com/LukasArmstrong/Youtube-Playlist-Organizer/issues">Report Bug</a>
     ·
-    <a href="https://github.com/LukasArmstrong/pywerTube/issues">Request Feature</a>
+    <a href="https://github.com/LukasArmstrong/Youtube-Playlist-Organizer/issues">Request Feature</a>
   </p>
 </div>
 
@@ -121,7 +121,7 @@ This started because I wanted to sort my watch later list on youtube by duration
 
 1. Clone the repo
    ```sh
-   git clone https://github.com/LukasArmstrong/pywerTube.git
+   git clone https://github.com/LukasArmstrong/Youtube-Playlist-Organizer.git
    ```
 2. Install required modules
    ```sh
@@ -174,7 +174,7 @@ However before the first sort, you'll need to get a token. This is done by:
 - [ ] Make youtube play update function for efficient
   
 
-See the [open issues](https://github.com/LukasArmstrong/pywerTube/issues) for a full list of proposed features (and known issues).
+See the [open issues](https://github.com/LukasArmstrong/Youtube-Playlist-Organizer/issues) for a full list of proposed features (and known issues).
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -212,7 +212,7 @@ Distributed under the GPL License. See `LICENSE.txt` for more information.
 
 Lukas Armstrong - Lucas.J.Armstrong@gmail.com
 
-Project Link: [https://github.com/LukasArmstrong/pywerTube](https://github.com/LukasArmstrong/pywerTube)
+Project Link: [https://github.com/LukasArmstrong/Youtube-Playlist-Organizer](https://github.com/LukasArmstrong/Youtube-Playlist-Organizer)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -232,15 +232,15 @@ Project Link: [https://github.com/LukasArmstrong/pywerTube](https://github.com/L
 <!-- MARKDOWN LINKS & IMAGES -->
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
 [contributors-shield]: https://img.shields.io/github/contributors/LukasArmstrong/pywerTube.svg?style=for-the-badge
-[contributors-url]: https://github.com/LukasArmstrong/pywerTube/graphs/contributors
+[contributors-url]: https://github.com/LukasArmstrong/Youtube-Playlist-Organizer/graphs/contributors
 [forks-shield]: https://img.shields.io/github/forks/LukasArmstrong/pywerTube.svg?style=for-the-badge
-[forks-url]: https://github.com/LukasArmstrong/pywerTube/network/members
+[forks-url]: https://github.com/LukasArmstrong/Youtube-Playlist-Organizer/network/members
 [stars-shield]: https://img.shields.io/github/stars/LukasArmstrong/pywerTube.svg?style=for-the-badge
-[stars-url]: https://github.com/LukasArmstrong/pywerTube/stargazers
+[stars-url]: https://github.com/LukasArmstrong/Youtube-Playlist-Organizer/stargazers
 [issues-shield]: https://img.shields.io/github/issues/LukasArmstrong/pywerTube.svg?style=for-the-badge
-[issues-url]: https://github.com/LukasArmstrong/pywerTube/issues
+[issues-url]: https://github.com/LukasArmstrong/Youtube-Playlist-Organizer/issues
 [license-shield]: https://img.shields.io/github/license/LukasArmstrong/pywerTube.svg?style=for-the-badge
-[license-url]: https://github.com/LukasArmstrong/pywerTube/blob/master/LICENSE.txt
+[license-url]: https://github.com/LukasArmstrong/Youtube-Playlist-Organizer/blob/master/LICENSE.txt
 [linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555
 [linkedin-url]: https://linkedin.com/in/linkedin_username](https://www.linkedin.com/in/lukasarmstrong/
 [product-screenshot]: images/screenshot.png
