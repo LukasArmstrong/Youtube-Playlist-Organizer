@@ -14,6 +14,8 @@ import structlog
 import logging
 import statistics as stats
 import googleapiclient.discovery as gacd
+import requests
+import json
 
 #==================================
 #            Variables
@@ -254,15 +256,15 @@ def getQuotaUsed(projectID):
     optionString = "Where(projectID= "+ str(projectID) + ")"
     gLogger.debug(f"Where statement: {optionString}")
     gLogger.debug("Getting Latest date...")
-    dbDate = getDataDB('QuotaLimit', ['MAX(date)'], optionString)
+    dbDate = getDataDB('QuotaLimit', ['MAX(date)'], optionString)[0][0]
     gLogger.debug("Latest date obtained!")
     gLogger.debug("Perfroming logic if date is today or not...")
-    if dt.date.today() == dbDate[0][0]:
+    if dt.date.today() == dbDate:
         gLogger.debug("Date is today...")
-        optionString= f"Where Date = {dbDate} and projectID = {projectID}"
+        optionString= f"Where Date = \"{dt.date.today().strftime('%Y-%m-%d')}\" and projectID = {projectID}"
         gLogger.debug(f"Where statement: {optionString}")
         gLogger.debug("Getting used quota...")
-        amount = getDataDB('QuotaLimit', ['Amount'], optionString)
+        amount = getDataDB('QuotaLimit', ['Amount'], optionString)[0][0]
         gLogger.debug("Returning used quota and date...")
         return amount, True
     else:
@@ -274,10 +276,10 @@ def setQuotaUsed(inDB, quota, projectID):
     gLogger.debug("Entering...")
     if not inDB:
         gLogger.debug("Creating new quota record...")
-        setDataDB('QuotaLimit', ['date', 'amount', 'projectID'], [dt.date.today().strftime("%Y/%m/%d"), quota, projectID])
+        setDataDB('QuotaLimit', ['date', 'amount', 'projectID'], [dt.date.today().strftime("%Y-%m-%d"), quota, projectID])
     else:
         gLogger.debug("Updating quota record...")
-        optionsString = f"Where Date = {dt.date.today()} and projectID = {projectID}"
+        optionsString = f"Where Date = \"{dt.date.today().strftime('%Y-%m-%d')}\" and projectID = {projectID}"
         updateDataDB('QuotaLimit', ['Amount'], [quota], optionsString)
     gLogger.debug("Quota Set!")
     gLogger.debug("Leaving...")
@@ -536,6 +538,92 @@ def getVideoYT(youtube, videoID):
     gLogger.debug("Leaving...")
     return videoDetails
 
+def getSubscriptions(youtube, mine=True, channel_id=None):
+    nextPageToken = None
+    subs = []
+    while True:
+        sub_request = youtube.subscriptions().list(
+            part="snippet",
+            mine=mine,
+            channelId = channel_id,
+            maxResults = 50, #Youtube API won't allow more then 50 results per request. Per docs: https://developers.google.com/youtube/v3/docs/playlists/list
+            pageToken = nextPageToken
+        )
+        try:
+            gLogger.debug("Executing youtube subscription request...")
+            sub_response = sub_request.execute()
+            gLogger.debug("Subscription request executed!")
+        except Exception as e:
+            gLogger.error(f"Error executing youtube playlist request. Type: {type(e)} Arguements:{e}")
+            raise RuntimeError(e)
+        subs += sub_response["items"]
+        gLogger.debug("Getting next page token...")    
+        nextPageToken = sub_response.get('nextPageToken')
+
+        gLogger.debug("Checking if next page token exist...")
+        if not nextPageToken:
+            gLogger.debug("Next page token doesn't exist, breaking out of loop...")
+            break
+    return subs
+
+def insertVideoYT(youtube, playlistID, videoID, position = 0):
+    vid_request = youtube.playlistItems.insert(
+        part="snippet",
+        body={
+          "snippet": {
+            "playlistId": playlistID,
+            "resourceId": {
+              "kind": "youtube#video",
+              "videoId": videoID
+            },
+            "position": position
+          }
+        }
+    )
+    try:
+        gLogger.debug("Executing youtube video insert request...")
+        vid_response = vid_request.execute()
+        gLogger.debug("Request Succeed! Video inserted!")
+    except Exception as e:
+        gLogger.error(f"Error executing youtube video insert request. Type: {type(e)} Arguements:{e}")
+        raise RuntimeError(e)
+
+def storeSubscripton(subs, youtube):
+    creatorDict = getCreatorDictionary([], youtube)[0]
+    lastID = max(creatorDict.values())
+    creatores = []
+    for sub in subs:
+        creatores.append(sub["snippet"]["title"])
+    test = creatorDict.keys()
+    test2 = list(set(creatores) - set(test))
+    for sub in subs:
+        if sanitizeTitle(sub["snippet"]["title"]) not in creatorDict.keys():
+            creator = sanitizeTitle(sub["snippet"]["title"])
+            insertCreatorsDB(creator, channel_id=sub["snippet"]["resourceId"]["channelId"], subscribedBool=1)
+            creatorDict[creator] = lastID+1
+            lastID += 1
+
+def insertCreatorsDB(creator, priorirtyScore=0, channel_id = None, subscribedBool = 0, unconditionalBool =0, sequentialBoolInt=0, youtube=None):
+    if not channel_id:
+        channel_id=findChannelID(creator, youtube)
+    cols = ['creators', 'priorityScore', 'channelId', 'subscribed', 'unconditional', 'sequentialVideos']
+    vals = [creator, priorirtyScore, channel_id, subscribedBool, unconditionalBool, sequentialBoolInt]
+    try:
+        setDataDB('Creators', cols, vals)
+    except Exception as e:
+        gLogger.error(f"Error insert creator: {e}")
+
+def pubhubsubhubPost(mode, topic, callback):
+    url = 'https://pubsubhubbub.appspot.com/subscribe?hub.callback='+callback+'&hub.mode='+mode+'&hub.verify=async&hub.lease=2629800&hub.topic='+topic
+    response = requests.post(url)
+    print(response.text)
+
+def subscribeCreators():
+    channelIDs = getDataDB('Creators', ['channelId'],'Where subscribed = 1')
+    for cID in channelIDs:
+        topic = 'https://www.youtube.com/feeds/videos.xml?channel_id='+cID[0]
+        pubhubsubhubPost('subscribe', topic, 'http://youtube.lukasarmstrong.io/webhook')
+
 #def insertVideo2WatchLater(conn, youtube, playlistID, videoID):
 #    watchLater = getDataDB(conn, 'WatchLaterList ', ['*'])
 #    videoDetails = getVideoYT(youtube,videoID)
@@ -602,7 +690,7 @@ def getSerializedVideos(watchLaterList, numSerKeywords, serKeywords):
     gLogger.debug("Entering...")
     nonSerialized = watchLaterList.copy() #creates copy to return non serialized videos as well
     gLogger.debug("Watch Later List copied!")
-    seriesPattern = re.compile(r"(%s)\s\d+" % "|".join(numSerKeywords) + "|(%s)" % "|".join(serKeywords), re.IGNORECASE) #create complicated regex pattern to find serialized videos through keywords
+    seriesPattern = re.compile(r"(%s)\s?\d+" % "|".join(numSerKeywords) + "|(%s)" % "|".join(serKeywords), re.IGNORECASE) #create complicated regex pattern to find serialized videos through keywords
     gLogger.debug("Regular Expression created to find Serialized Videos")
     gLogger.debug("Creating creator list...")
     creators = [i[4] for i in watchLaterList] #pull out creators from given list
@@ -681,8 +769,16 @@ def sortSeriesVideos(watchLaterList):
     gLogger.debug("Entering...")
     gLogger.debug("Looping over series list...")
     for index in range(len(watchLaterList)):
+        if not watchLaterList[index]:
+            continue
+        #itemTitle = watchLaterList[index][0][6] #0 is arb
+        #result = re.search(r'\d', itemTitle[:len(itemTitle)//2])
+        #if result:
+        #    gLogger.debug("Natural sorting series sub list...")
+        #    watchLaterList[index] = natsorted(watchLaterList[index], key=lambda x: x[6]) #since each creator has own method for ordering videos, natsort each creator individually
+        #else:
         gLogger.debug("Natural sorting series sub list...")
-        watchLaterList[index] = natsorted(watchLaterList[index], key=lambda x: x[6]) #since each creator has own method for ordering videos, natsort each creator individually
+        watchLaterList[index] = natsorted(watchLaterList[index], key= lambda x: x[6].rsplit("-",1)[1] if '-' in x[6] else x[6]) #since each creator has own method for ordering videos, natsort each creator individually
     gLogger.debug("Returning sorted series list...")
     return watchLaterList
 
@@ -702,7 +798,8 @@ def sortWatchLater(watchLaterList, creatorDict, keywordDict, numSerKeywords, ser
     videoCountThreshold = 50 #Number of items in list to determine priority limit
     durationThreshold = 61*60 #61 minutes in seconds / Wanted to include anything that is 60 minutes + change and under. Main goal is to stop super long content from choking up the priority queue.
     sortedpriorityWatchLater = [] 
-    
+    periodicity=2
+
     gLogger.debug("Determining priority threshold")
     #How priority is defined
     if len(watchLaterList) > videoCountThreshold:
@@ -748,10 +845,12 @@ def sortWatchLater(watchLaterList, creatorDict, keywordDict, numSerKeywords, ser
         for row in range(len(sortedSequentialWatchLater)):
             gLogger.debug("Checking if parent video duration is less than current item duration and they they are not same...")
             if sortedSequentialWatchLater[row] and sortedSequentialWatchLater[row][0][3] <= item[3] and sortedSequentialWatchLater[row][0][4] != item[4]:
-                gLogger.debug("It is! Reordering video...")
-                workingWatchLater.insert(index, sortedSequentialWatchLater[row][0])
-                gLogger.debug("Removing parent from Sequential list...")
-                sortedSequentialWatchLater[row].pop(0)
+                gLogger.debug("Parent Video is less! Reordering videos...")
+                for v_idx ,vid in enumerate(sortedSequentialWatchLater[row]):
+                    gLogger.debug("Inserting video in list at given periodicity")        
+                    workingWatchLater.insert(index+v_idx*periodicity, vid)
+                gLogger.debug("emptying row")
+                sortedSequentialWatchLater[row]=[]
 
         gLogger.debug("Looping over Series list...")        
         for row in range(len(sortedSeriesWatchLater)):
@@ -792,6 +891,14 @@ def checkType(var, type):
         gLogger.error(f"{var} not of {type}!", variable=var, type=type)
         raise TypeError(f"{var} not of type: {type}!")
     gLogger.debug("Type Checks out! Leaving...")
+
+def checkTypeReturn(var, type):
+    gLogger.debug("Entering...")
+    if not isinstance(var, type):
+        gLogger.warning(f"{var} not of {type}!", variable=var, type=type)
+        return False
+    gLogger.debug("Type Checks out! Returning True...")
+    return True
 
 def renumberWatchLater(watchLater):
     gLogger.debug("Entering...")
@@ -913,13 +1020,7 @@ def getCreatorDictionary(creatorList, youtube):
     quotaUsed = 0
     for creator in creatorList:
         if sanitizeTitle(creator) not in creatorDict:
-            cols = ['creators', 'priorityScore', 'channelId', 'sequentialVideos']
-            vals = [sanitizeTitle(creator), 0, findChannelID(creator, youtube), 0]
-            quotaUsed += 1 
-            try:
-                setDataDB('Creators', cols, vals)
-            except Exception as e:
-                gLogger.error(f"Error insert creator: {e}")
+            insertCreatorsDB(sanitizeTitle(creator), youtube=youtube)
             creatorDict[creator] = lastID+1
             lastID += 1
     gLogger.debug("Returning creator dictionary...")
@@ -962,3 +1063,9 @@ def WatchLaterCreatorStats(watchLater, datetime, youtube):
             setDataDB('WatchLaterCreatorStats', cols, vals)
     gLogger.debug("Returning quota...")
     return quotaUsed
+
+def pickleSomething(thing, nameString):
+     # Save credentials for the next run
+     with open(f"pickles/{nameString}.pickle", "wb") as f:
+         print("Saving " + nameString + " for future use...")
+         pickle.dump(thing, f)

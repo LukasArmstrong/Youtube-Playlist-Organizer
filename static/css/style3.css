@@ -1,0 +1,84 @@
+body, html {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+}
+
+a{
+  color: white;
+}
+
+body {
+  background: rgb(0,0,0);
+  /*background: linear-gradient(0deg, rgba(0,0,0,1) 25%, rgba(141,75,249,1) 125%);*/
+  background: radial-gradient(circle at right top, rgba(141,75,249,1) -15%, rgba(0,0,0,1) 80%);
+}
+
+.sortBtn{
+  background-color: #fff;
+  color: #000;
+  border-color: #fff;
+  max-width: 300px;
+  border-radius: 36px;
+  padding: 15px, 24px;
+  font-family: Helvetica, sans-serif;
+  font-size: 20px;
+  transition: background-color .35s, color .35s;
+}
+
+.sortBtn:hover{
+  color: #fff;
+  background-color: rgba(0,0,0,0);
+  border-color: #fff;
+}
+
+
+.alert-info {
+  padding: 12px;
+  border-radius: 3px;
+  font-size: 1.2rem;
+  margin-bottom: 16px;
+  border: 2px solid orange;
+  background-color: yellow;
+  color: black;
+}
+
+
+/* The Modal (background) */
+.modal {
+  display: none; /* Hidden by default */
+  position: fixed; /* Stay in place */
+  z-index: 1; /* Sit on top */
+  padding-top: 100px; /* Location of the box */
+  left: 0;
+  top: 0;
+  width: 100%; /* Full width */
+  height: 100%; /* Full height */
+  overflow: auto; /* Enable scroll if needed */
+  background-color: rgb(0,0,0); /* Fallback color */
+  background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+}
+
+/* Modal Content */
+.modal-content {
+  background-color: #fefefe;
+  margin: auto;
+  padding: 20px;
+  border: 1px solid #888;
+  width: 80%;
+}
+
+/* The Close Button */
+.close {
+  color: #aaaaaa;
+  float: right;
+  font-size: 28px;
+  font-weight: bold;
+}
+
+.close:hover,
+.close:focus {
+  color: #000;
+  text-decoration: none;
+  cursor: pointer;
+}
