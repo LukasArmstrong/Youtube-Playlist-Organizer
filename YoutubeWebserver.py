@@ -9,12 +9,54 @@ from datetime import datetime as dt, timedelta
 from googleapiclient.discovery import build
 import json
 
-app = Flask(__name__)
-app.secret_key = b'_5#y2L"F4Q8z\n\xec]/'
+SECRET_KEY = os.environ.get('IN_DOCKER_CONTAINER', False)
 
+#Set Logger
 if 'TERM_PROGRAM' in os.environ.keys() and os.environ['TERM_PROGRAM'] == 'vscode':
     logger = pt.initLogger(__file__, debug=True, verbose=False)
+elif SECRET_KEY:
+    logger = pt.initLogger(__file__, debug=os.environ.get('DEBUG_MODE',False), verbose=os.environ.get('VERBOSE_DEBUG', False))
+else:
+    logger = pt.initLogger(__file__, debug=False, verbose=False)
 storedCreators = None
+
+#Initalize Base Variables
+
+if SECRET_KEY:
+    #create YAML file
+    env_dict = {'db':os.environ.get('DATABASE'),
+                 'dbPort':int(os.environ.get('DATABASE_PORT')),
+                 'dbPwd':os.environ.get('DATABASE_PASSWORD'),
+                 'dbServerIP':os.environ.get('DATABASE_SERVER_IP'),
+                 'dbUser':os.environ.get('DATABASE_USER'),
+                 'hostIP':os.environ.get('HOST_IP'),
+                 'hostPort':int(os.environ.get('HOST_PORT')),
+                 'projectID':int(os.environ.get('IDRIS_PROJECT_ID')),
+                 'webPort':int(os.environ.get('INTERNAL_FLOW_PORT')),
+                 'ytPlaylistID':os.environ.get('YOUTUBE_PLAYLIST_ID')}
+    
+    pt.createYamlFile("config.yaml", env_dict)
+
+    client_secret_dict = {'web':{
+                                'client_id':os.environ.get('CLIENT_ID'),
+                                'project_id':os.environ.get('PROJECT_ID'),
+                                'auth_uri':os.environ.get('AUTH_URI'),
+                                'token_uri':os.environ.get('TOKEN_URI'),
+                                'auth_provider_x509_cert_url':os.environ.get('AUTH_PROVIDER'),
+                                'client_secret':os.environ.get('CLIENT_SECRET'),
+                                'redirect_uris':os.environ.get('REDIRECT_URIS').split(',')}}
+
+    pt.createJsonFile('youtube_user_client_secret.json', client_secret_dict)
+
+database, mariaPort, password, serverIp, user, host_ip, host_port, projectID, portNumber, playlistID = pt.getProjectVariablesYAML("config.yaml")
+
+numberedSerializedKeywords = ['series', 'part', 'finale', 'episode', 'ep', 'smarter every day', '#', 'chapter']
+serializedKeywords = ['finale']
+sequentialCreators = ['Wintergatan', 'LegalEagle','penguinz0', 'AntsCanada', 'Brozime', 'FE-Engineer', 'Jet Lag: The Game']
+
+app = Flask(__name__)
+app.secret_key = b'_5#y2L"F4Q8z\n\xec]/'
+pt.getDataBaseConnection(user, password, serverIp, mariaPort, database)
 
 @app.route('/', methods=('GET','POST'))
 def index():
@@ -122,7 +164,7 @@ def subscribe():
     subLog = logger.bind()
     pt.setLogger(subLog)
     subLog.info("subLogger set as logger!")
-    activeCredentials = pt.getCredentials(portNumber, clientSecretFile)
+    activeCredentials = pt.getCredentials(portNumber, 'youtube_user_client_secret.json')
     subLog.info("Credentials obtained!")
     youtube = build("youtube", "v3", credentials=activeCredentials)
     subLog.info("Youtube object built!")
@@ -197,7 +239,7 @@ def sort():
 @app.route('/renew', methods=['GET'])  
 def reNewToken():
     if request.method == 'GET':
-        flow = pt.getFlowObject( clientSecretFile)
+        flow = pt.getFlowObject('youtube_user_client_secret.json')
         flow.run_local_server()
         flow.authorized_session()
         credentials = flow.credentials
@@ -224,18 +266,12 @@ def initWatchLater(logger):
     return creatorDictionary, keywordDictionary, videoFollowUpList, quota, inDB
 
 def getYoutubeObj(logger):
-    activeCredentials = pt.getCredentials(portNumber, clientSecretFile)
+    activeCredentials = pt.getCredentials(portNumber, 'youtube_user_client_secret.json')
     logger.info("Credentials obtained!")
     youtube = build("youtube", "v3", credentials=activeCredentials)
     logger.info("Youtube object built!")
     return youtube
 
-database, mariaPort, password, serverIp, user, projectID, portNumber, playlistID, clientSecretFile, hostIP, hostPort = pt.getProjectVariables("config.yaml")
-
-numberedSerializedKeywords = ['series', 'part', 'finale', 'episode', 'ep', 'smarter every day', '#']
-serializedKeywords = ['finale']
-sequentialCreators = ['Wintergatan', 'LegalEagle','penguinz0', 'AntsCanada', 'Brozime', 'FE-Engineer']
-
-pt.getDataBaseConnection(user, password, serverIp, mariaPort, database)
-
-app.run(host=hostIP, port=hostPort)
+if __name__ == "__main__":
+    app.run(host=host_ip, port=host_port)
+    
