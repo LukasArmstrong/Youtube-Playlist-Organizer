@@ -2,6 +2,7 @@
 *.pickle
 *.yaml
 *.json
+*.env
 playground.py
 mariadb_repo_setup
 *.pyc
