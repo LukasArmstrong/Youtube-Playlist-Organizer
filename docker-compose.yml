@@ -1,0 +1,8 @@
+services:
+  powertube:
+    image: powertube
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    ports:
+      - 5002:5002

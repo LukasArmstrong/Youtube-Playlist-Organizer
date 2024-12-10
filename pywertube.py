@@ -74,7 +74,7 @@ def initLogger(file, debug=False, verbose=False):
     else:
         BASE_DIR = os.path.dirname(file)
         os.makedirs(os.path.join(BASE_DIR, "logs"), exist_ok=True)
-        LOG_FILE = f"{BASE_DIR}\\logs\\{os.path.basename(file)[:-3]}.log"
+        LOG_FILE = f"{BASE_DIR}/logs/{os.path.basename(file)[:-3]}.log"
 
         structlog.configure( 
             processors=[ 
@@ -818,26 +818,30 @@ def sortWatchLater(watchLaterList, creatorDict, keywordDict, numSerKeywords, ser
         followUpWatchLater = getFollowUpVideos(workingWatchLater, videoIDFollowUpList)
     else:
         followUpWatchLater = []
-    gLogger.debug("Follow-up list obtained! Getting Serialized list...")
-    seriesWatchLater, workingWatchLater = getSerializedVideos(workingWatchLater, numSerKeywords, serKeywords)
-    gLogger.debug("Serialized list obtained! Getting Sequential list...")
+    gLogger.debug("Follow-up list obtained! Getting Sequential list...")
     sequentialWatchLater, workingWatchLater = getSequentialVideos(workingWatchLater, sequentialCreators, durationThreshold)
-    gLogger.debug("Sequential list obtained! Moving to sorting...")
+    gLogger.debug("Sequential list obtained! Getting Serialized list...")
+    seriesWatchLater, workingWatchLater = getSerializedVideos(workingWatchLater, numSerKeywords, serKeywords)
+    gLogger.debug("Serialized list obtained! Moving to sorting...")
+    
 
     #Step 2 - Sort segments
     gLogger.debug("Sorting Priority list...")
     for i in range(len(priorityWatchLater)): #Sort by priortity then publish time
         sortedpriorityWatchLater += sorted(priorityWatchLater[i], key=lambda x: x[5]) #Creates 1D list where priority is maintaied and videos are sorted by publish time within a priority group
-    gLogger.debug("Priority list sorted! Sorting Series list...")
-    sortedSeriesWatchLater = sortSeriesVideos(seriesWatchLater)
-    gLogger.debug("Series list sorted! Sorting Sequential list...")
+    gLogger.debug("Priority list sorted! Sorting  list...")
     sortedSequentialWatchLater = sortSequentialVideo(sequentialWatchLater)
+    gLogger.debug("Sequential list sorted! Sorting Series list...")
+    sortedSeriesWatchLater = sortSeriesVideos(seriesWatchLater)    
     gLogger.debug("Sequential list sorted! Sorting rest of watch later list...")
     workingWatchLater.sort( key=lambda x: (x[3], x[5])) #Sort by duration then publish time
     gLogger.debug("Rest of Watch Later list sorted!")
 
     #Step 3 - Merge sequential and series segments back together
     #TODO - Break up this step
+
+    insertPositionList = []
+
     gLogger.debug("Entering loop to merging Series and Sequential lists together...")
     for index, item in enumerate(workingWatchLater):
         #Merge in sequential videos
@@ -908,13 +912,29 @@ def renumberWatchLater(watchLater):
     gLogger.debug("Returning renumbered Watch Later...")
     return watchLater
 
-def getProjectVariables(file):
+def getProjectVariablesYAML(file):
     gLogger.debug("Entering...")
     checkType(file, str)
     with open(file, 'r') as f:
         projectVariables = yaml.safe_load(f)
+    print(projectVariables)
     gLogger.debug("Returning tuple packed values...")
     return tuple(projectVariables.values())
+
+def getProjectVariablesENV():
+    gLogger.debug("Entering...")
+    database = os.environ.get('DATABASE')
+    mariaPort = int(os.environ.get('DATABASE_PORT'))
+    password = os.environ.get('DATABASE_PASSWORD')
+    serverIp = os.environ.get('DATABASE_SERVER_IP')
+    user = os.environ.get('DATABASE_USER')
+    projectID = int(os.environ.get('IDRIS_PROJECT_ID'))
+    portNumber = int(os.environ.get('INTERNAL_FLOW_PORT'))
+    playlistID = os.environ.get('YOUTUBE_PLAYLIST_ID')
+    clientSecretFile = os.environ.get('YOUTUBE_CLIENT_SECRET_FILE')
+    hostIP = os.environ.get('HOST_IP')
+    hostPort = int(os.environ.get('HOST_PORT'))
+    return (database, mariaPort, password, serverIp, user, projectID, portNumber, playlistID, clientSecretFile, hostIP, hostPort)
 
 def durationString2Sec(durationString, hours_pattern=re.compile(r'(\d+)H'), minutes_pattern=re.compile(r'(\d+)M'), seconds_pattern=re.compile(r'(\d+)S')):
     gLogger.debug("Entering...")
@@ -1063,6 +1083,14 @@ def WatchLaterCreatorStats(watchLater, datetime, youtube):
             setDataDB('WatchLaterCreatorStats', cols, vals)
     gLogger.debug("Returning quota...")
     return quotaUsed
+
+def createJsonFile(file, data_dict):
+    with open(file, 'w') as outfile:
+        json.dump(data_dict, outfile, indent=4)
+
+def createYamlFile(file, data_dict):
+    with open(file, 'w') as yaml_file:
+        yaml.dump(data_dict, yaml_file, default_flow_style=False)
 
 def pickleSomething(thing, nameString):
      # Save credentials for the next run
