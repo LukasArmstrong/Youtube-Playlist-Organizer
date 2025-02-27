@@ -273,5 +273,5 @@ def getYoutubeObj(logger):
     return youtube
 
 if __name__ == "__main__":
-    app.run(host=hostIP, port=hostPort)
+    app.run(host=host_ip, port=host_port)
     
