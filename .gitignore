@@ -4,6 +4,7 @@
 *.json
 *.env
 *.dockerignore
+*.bash
 playground.py
 mariadb_repo_setup
 *.pyc
