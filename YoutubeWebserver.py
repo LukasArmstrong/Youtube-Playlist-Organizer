@@ -50,9 +50,9 @@ if SECRET_KEY:
 
 database, mariaPort, password, serverIp, user, host_ip, host_port, projectID, portNumber, playlistID = pt.getProjectVariablesYAML("config.yaml")
 
-numberedSerializedKeywords = ['series', 'part', 'finale', 'episode', 'ep', 'smarter every day', '#', 'chapter']
+numberedSerializedKeywords = ['series', 'part', 'finale', 'episode', 'ep', '#', 'chapter']
 serializedKeywords = []
-sequentialCreators = ['Wintergatan', 'LegalEagle','penguinz0', 'AntsCanada', 'Brozime', 'FE-Engineer', 'Jet Lag: The Game', 'CaptainSparklez']
+sequentialCreators = ['Wintergatan', 'LegalEagle','penguinz0', 'AntsCanada', 'Brozime', 'FE-Engineer', 'Jet Lag: The Game', 'CaptainSparklez', 'SmarterEveryDay']
 
 app = Flask(__name__)
 app.secret_key = b'_5#y2L"F4Q8z\n\xec]/'
