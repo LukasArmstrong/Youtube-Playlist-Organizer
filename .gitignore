@@ -5,6 +5,7 @@
 *.env
 *.dockerignore
 *.bash
+*.env
 playground.py
 mariadb_repo_setup
 docker_pwd.txt
