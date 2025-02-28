@@ -821,7 +821,8 @@ def sortWatchLater(watchLaterList, creatorDict, keywordDict, numSerKeywords, ser
     gLogger.debug("Follow-up list obtained! Getting Sequential list...")
     sequentialWatchLater, workingWatchLater = getSequentialVideos(workingWatchLater, sequentialCreators, durationThreshold)
     gLogger.debug("Sequential list obtained! Getting Serialized list...")
-    seriesWatchLater, workingWatchLater = getSerializedVideos(workingWatchLater, numSerKeywords, serKeywords)
+    #seriesWatchLater, workingWatchLater = getSerializedVideos(workingWatchLater, numSerKeywords, serKeywords)
+    seriesWatchLater = []
     gLogger.debug("Serialized list obtained! Moving to sorting...")
     
 
