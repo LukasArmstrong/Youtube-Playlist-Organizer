@@ -52,11 +52,13 @@ else:
 
 numberedSerializedKeywords = ['series', 'part', 'finale', 'episode', 'ep', '#', 'chapter']
 serializedKeywords = []
-sequentialCreators = ['Wintergatan', 'LegalEagle','penguinz0', 'AntsCanada', 'Brozime', 'FE-Engineer', 'Jet Lag: The Game', 'CaptainSparklez', 'SmarterEveryDay']
 
 app = Flask(__name__)
 app.secret_key = b'_5#y2L"F4Q8z\n\xec]/'
 pt.getDataBaseConnection(user, password, serverIp, mariaPort, database)
+
+sequentialCreators_tuple_list = pt.getDataDB('SequentialCreators',['Creators'], 'left  join Creators on SequentialCreators.creatorId = Creators.id')
+sequentialCreators = [''.join(i) for i in sequentialCreators_tuple_list]
 
 @app.route('/', methods=('GET','POST'))
 def index():
