@@ -35,7 +35,7 @@ if SECRET_KEY:
                  'webPort':int(os.environ.get('INTERNAL_FLOW_PORT')),
                  'ytPlaylistID':os.environ.get('YOUTUBE_PLAYLIST_ID')}
     
-    pt.createYamlFile("config.yaml", env_dict)
+    database, mariaPort, password, serverIp, user, host_ip, host_port, projectID, portNumber, playlistID = pt.getProjectVariablesENV()
 
     client_secret_dict = {'web':{
                                 'client_id':os.environ.get('CLIENT_ID'),
@@ -47,8 +47,8 @@ if SECRET_KEY:
                                 'redirect_uris':os.environ.get('REDIRECT_URIS').split(',')}}
 
     pt.createJsonFile('youtube_user_client_secret.json', client_secret_dict)
-
-database, mariaPort, password, serverIp, user, host_ip, host_port, projectID, portNumber, playlistID = pt.getProjectVariablesYAML("config.yaml")
+else:
+    database, mariaPort, password, serverIp, user, host_ip, host_port, projectID, portNumber, playlistID = pt.getProjectVariablesYAML("config.yaml")
 
 numberedSerializedKeywords = ['series', 'part', 'finale', 'episode', 'ep', '#', 'chapter']
 serializedKeywords = []
