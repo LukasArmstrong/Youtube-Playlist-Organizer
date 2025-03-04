@@ -9,8 +9,6 @@ from datetime import datetime as dt, timedelta
 from googleapiclient.discovery import build
 import json
 
-SECRET_KEY = os.environ.get('IN_DOCKER_CONTAINER', False)
-
 #Set Logger
 if 'TERM_PROGRAM' in os.environ.keys() and os.environ['TERM_PROGRAM'] == 'vscode':
     logger = pt.initLogger(__file__, debug=True, verbose=False)
@@ -21,34 +19,18 @@ else:
 storedCreators = None
 
 #Initalize Base Variables
+database, mariaPort, password, serverIp, user, host_ip, host_port, projectID, portNumber, playlistID = pt.getProjectVariablesENV()
 
-if SECRET_KEY:
-    #create YAML file
-    env_dict = {'db':os.environ.get('DATABASE'),
-                 'dbPort':int(os.environ.get('DATABASE_PORT')),
-                 'dbPwd':os.environ.get('DATABASE_PASSWORD'),
-                 'dbServerIP':os.environ.get('DATABASE_SERVER_IP'),
-                 'dbUser':os.environ.get('DATABASE_USER'),
-                 'hostIP':os.environ.get('HOST_IP'),
-                 'hostPort':int(os.environ.get('HOST_PORT')),
-                 'projectID':int(os.environ.get('IDRIS_PROJECT_ID')),
-                 'webPort':int(os.environ.get('INTERNAL_FLOW_PORT')),
-                 'ytPlaylistID':os.environ.get('YOUTUBE_PLAYLIST_ID')}
-    
-    database, mariaPort, password, serverIp, user, host_ip, host_port, projectID, portNumber, playlistID = pt.getProjectVariablesENV()
+client_secret_dict = {'web':{
+                            'client_id':os.environ.get('CLIENT_ID'),
+                            'project_id':os.environ.get('PROJECT_ID'),
+                            'auth_uri':os.environ.get('AUTH_URI'),
+                            'token_uri':os.environ.get('TOKEN_URI'),
+                            'auth_provider_x509_cert_url':os.environ.get('AUTH_PROVIDER'),
+                            'client_secret':os.environ.get('CLIENT_SECRET'),
+                            'redirect_uris':os.environ.get('REDIRECT_URIS').split(',')}}
 
-    client_secret_dict = {'web':{
-                                'client_id':os.environ.get('CLIENT_ID'),
-                                'project_id':os.environ.get('PROJECT_ID'),
-                                'auth_uri':os.environ.get('AUTH_URI'),
-                                'token_uri':os.environ.get('TOKEN_URI'),
-                                'auth_provider_x509_cert_url':os.environ.get('AUTH_PROVIDER'),
-                                'client_secret':os.environ.get('CLIENT_SECRET'),
-                                'redirect_uris':os.environ.get('REDIRECT_URIS').split(',')}}
-
-    pt.createJsonFile('youtube_user_client_secret.json', client_secret_dict)
-else:
-    database, mariaPort, password, serverIp, user, host_ip, host_port, projectID, portNumber, playlistID = pt.getProjectVariablesYAML("config.yaml")
+pt.createJsonFile('youtube_user_client_secret.json', client_secret_dict)
 
 numberedSerializedKeywords = ['series', 'part', 'finale', 'episode', 'ep', '#', 'chapter']
 serializedKeywords = []
