@@ -932,10 +932,9 @@ def getProjectVariablesENV():
     projectID = int(os.environ.get('IDRIS_PROJECT_ID'))
     portNumber = int(os.environ.get('INTERNAL_FLOW_PORT'))
     playlistID = os.environ.get('YOUTUBE_PLAYLIST_ID')
-    clientSecretFile = os.environ.get('YOUTUBE_CLIENT_SECRET_FILE')
     hostIP = os.environ.get('HOST_IP')
     hostPort = int(os.environ.get('HOST_PORT'))
-    return (database, mariaPort, password, serverIp, user, projectID, portNumber, playlistID, clientSecretFile, hostIP, hostPort)
+    return (database, mariaPort, password, serverIp, user, hostIP, hostPort, projectID, portNumber, playlistID)
 
 def durationString2Sec(durationString, hours_pattern=re.compile(r'(\d+)H'), minutes_pattern=re.compile(r'(\d+)M'), seconds_pattern=re.compile(r'(\d+)S')):
     gLogger.debug("Entering...")
