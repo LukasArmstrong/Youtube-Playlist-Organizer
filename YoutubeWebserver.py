@@ -12,10 +12,8 @@ import json
 #Set Logger
 if 'TERM_PROGRAM' in os.environ.keys() and os.environ['TERM_PROGRAM'] == 'vscode':
     logger = pt.initLogger(__file__, debug=True, verbose=False)
-elif SECRET_KEY:
-    logger = pt.initLogger(__file__, debug=os.environ.get('DEBUG_MODE',False), verbose=os.environ.get('VERBOSE_DEBUG', False))
 else:
-    logger = pt.initLogger(__file__, debug=False, verbose=False)
+        logger = pt.initLogger(__file__, debug=os.environ.get('DEBUG_MODE', False), verbose=os.environ.get('VERBOSE_DEBUG', False))
 storedCreators = None
 
 #Initalize Base Variables
