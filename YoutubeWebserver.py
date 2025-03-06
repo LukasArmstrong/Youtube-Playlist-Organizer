@@ -37,8 +37,11 @@ app = Flask(__name__)
 app.secret_key = b'_5#y2L"F4Q8z\n\xec]/'
 pt.getDataBaseConnection(user, password, serverIp, mariaPort, database)
 
-sequentialCreators_tuple_list = pt.getDataDB('SequentialCreators',['Creators'], 'left  join Creators on SequentialCreators.creatorId = Creators.id')
-sequentialCreators = [''.join(i) for i in sequentialCreators_tuple_list]
+sequentialCreators_and_exceptions_list = pt.getDataDB('SequentialCreators',['Creators', 'DurationExpection'], 'left  join Creators on SequentialCreators.creatorId = Creators.id')
+sequentialCreatorsDict = dict(sequentialCreators_and_exceptions_list)
+#unzippedSequential = list(zip(*sequentialCreators_and_exceptions_list))
+#sequentialCreators = unzippedSequential[0]
+#sequentialExcpetions = unzippedSequential[1]
 
 @app.route('/', methods=('GET','POST'))
 def index():
@@ -177,7 +180,7 @@ def sort():
                 quota += requestOps
                 sortLog.info(f"Youtube Watchlater Obtained! Quota incurred: {requestOps}, Total: {quota}")
                 try: 
-                    sortedWatchLater = pt.sortWatchLater(youtubeWatchLater, creatorDictionary, keywordDictionary, numberedSerializedKeywords, serializedKeywords, videoFollowUpList, sequentialCreators)
+                    sortedWatchLater = pt.sortWatchLater(youtubeWatchLater, creatorDictionary, keywordDictionary, numberedSerializedKeywords, serializedKeywords, videoFollowUpList, sequentialCreatorsDict)
                     sortLog.info("Watchlater sorted!")
                     try:
                         videoOps, youtubeWatchLater = pt.updatePlaylist(youtubeWatchLater, sortedWatchLater, youtube, playlistID)

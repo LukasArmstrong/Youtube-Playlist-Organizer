@@ -713,24 +713,25 @@ def getSerializedVideos(watchLaterList, numSerKeywords, serKeywords):
     gLogger.debug("Returning to serialized watch later and non-serialized list")
     return seriesList, nonSerialized
 
-def getSequentialVideos(watchLaterList, sequentialCreators,durationThreshold):
+def getSequentialVideos(watchLaterList, sequentialCreatorsDict, durationThreshold):
     #TODO: Instead of durationThreshold as filter, use blacklist. 
     #Explaination: Pull out videos from creators that reference previous videos. Since it just the order the creator uploaded them, published date can be used to sort.
     gLogger.debug("Entering...")
     nonSequential = watchLaterList.copy() #creates copy to return non sequential videos as well
     gLogger.debug("Watch Later List copied!")
-    gLogger.debug(f"Creating {len(sequentialCreators)} dimensional list (Size is determined by number of creators in sequential)...")
-    seqList = [[] for i in range(len(sequentialCreators))] #create 2d array where each row is a different creator
+    gLogger.debug(f"Creating {len(sequentialCreatorsDict.keys())} dimensional list (Size is determined by number of creators in sequential)...")
+    seqList = [[] for i in range(len(sequentialCreatorsDict.keys()))] #create 2d array where each row is a different creator
     gLogger.debug("Looping over watch later list to find serialized videos...")
     for video in watchLaterList:
-        if video[4] in sequentialCreators and video[3] < durationThreshold:
-            gLogger.debug(f"Result found! {video[6]} by {video[4]}!")
-            gLogger.debug("Finding creator index of video...")
-            seqIndex = sequentialCreators.index(video[4]) #postion in list determines row number
-            gLogger.debug("Appending sequential video to creator sub-list...")
-            seqList[seqIndex].append(video) #place corresponding videos to creator row
-            gLogger.debug("Removing serialized video from orginal list...")
-            nonSequential.remove(video) #remove serialized video from non-serialized list
+        if video[4] in sequentialCreatorsDict.keys():
+            if (video[3] < durationThreshold) or bool(sequentialCreatorsDict[video[4]]):
+                gLogger.debug(f"Result found! {video[6]} by {video[4]}!")
+                gLogger.debug("Finding creator index of video...")
+                seqIndex = list(sequentialCreatorsDict.keys()).index(video[4]) #postion in list determines row number
+                gLogger.debug("Appending sequential video to creator sub-list...")
+                seqList[seqIndex].append(video) #place corresponding videos to creator row
+                gLogger.debug("Removing serialized video from orginal list...")
+                nonSequential.remove(video) #remove serialized video from non-serialized list
     gLogger.debug("Returning to serialized watch later and non-serialized list")
     return seqList, nonSequential
 
